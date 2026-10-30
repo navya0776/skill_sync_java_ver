@@ -1,0 +1,22 @@
+# IntelliJ
+.idea/
+*.iml
+
+# Maven
+target/
+
+# Java
+*.class
+
+# Environment variables and credentials
+.env
+.env.*
+application-local.properties
+db-credentials.properties
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

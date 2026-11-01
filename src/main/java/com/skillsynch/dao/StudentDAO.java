@@ -1,12 +1,16 @@
-
 package com.skillsynch.dao;
+
+import com.skillsynch.config.DatabaseConfig;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.HashMap;
+import java.util.Map;
 
 public class StudentDAO {
 
+    // CREATE STUDENT DURING REGISTRATION
     public int createStudent(
             Connection connection,
             String name,
@@ -37,6 +41,7 @@ public class StudentDAO {
             statement.executeUpdate();
 
             try (ResultSet keys = statement.getGeneratedKeys()) {
+
                 if (keys.next()) {
                     return keys.getInt(1);
                 }
@@ -44,5 +49,66 @@ public class StudentDAO {
         }
 
         throw new Exception("Student creation failed.");
+    }
+
+    // GET STUDENT PROFILE FROM MYSQL
+    public Map<String, Object> getStudentById(
+            Connection connection,
+            int studentId
+    ) throws Exception {
+
+        String sql = """
+                SELECT student_id, name, branch, year, cgpa, email
+                FROM Students
+                WHERE student_id = ?
+                """;
+
+        try (PreparedStatement statement =
+                     connection.prepareStatement(sql)) {
+
+            statement.setInt(1, studentId);
+
+            try (ResultSet result = statement.executeQuery()) {
+
+                if (result.next()) {
+
+                    Map<String, Object> student = new HashMap<>();
+
+                    student.put(
+                            "student_id",
+                            result.getInt("student_id")
+                    );
+
+                    student.put(
+                            "name",
+                            result.getString("name")
+                    );
+
+                    student.put(
+                            "branch",
+                            result.getString("branch")
+                    );
+
+                    student.put(
+                            "year",
+                            result.getInt("year")
+                    );
+
+                    student.put(
+                            "cgpa",
+                            result.getDouble("cgpa")
+                    );
+
+                    student.put(
+                            "email",
+                            result.getString("email")
+                    );
+
+                    return student;
+                }
+            }
+        }
+
+        return null;
     }
 }

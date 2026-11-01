@@ -8,9 +8,10 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import com.skillsynch.service.AuthService;
 import com.skillsynch.model.User;
+import java.util.function.Consumer;
 public class LoginView {
 
-    public Parent getView(Runnable openRegister) {
+    public Parent getView(Runnable openRegister,Consumer<User> onLoginSuccess) {
 
         VBox container = new VBox(22);
         container.setAlignment(Pos.CENTER);
@@ -78,12 +79,14 @@ public class LoginView {
                 );
 
                 if (user != null) {
+
                     new Alert(
                             Alert.AlertType.INFORMATION,
                             "Welcome to SkillSynch, " + user.getUsername()
                     ).showAndWait();
 
-                    // We will navigate to the role-specific dashboard here.
+                    onLoginSuccess.accept(user);
+
                 } else {
                     new Alert(
                             Alert.AlertType.ERROR,

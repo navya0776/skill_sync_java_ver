@@ -1,6 +1,9 @@
 
 package com.skillsynch.dao;
-
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -37,5 +40,35 @@ public class CompanyDAO {
         }
 
         throw new Exception("Company creation failed.");
+    }
+    public List<Map<String, Object>> getAllCompanies(
+            Connection connection
+    ) throws Exception {
+
+        String sql = """
+            SELECT company_id, company_name, industry, description
+            FROM Companies
+            ORDER BY company_name
+            """;
+
+        List<Map<String, Object>> companies = new ArrayList<>();
+
+        try (PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+
+            while (resultSet.next()) {
+
+                Map<String, Object> company = new HashMap<>();
+
+                company.put("company_id", resultSet.getInt("company_id"));
+                company.put("company_name", resultSet.getString("company_name"));
+                company.put("industry", resultSet.getString("industry"));
+                company.put("description", resultSet.getString("description"));
+
+                companies.add(company);
+            }
+        }
+
+        return companies;
     }
 }

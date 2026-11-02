@@ -1,4 +1,9 @@
 package com.skillsynch.ui;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import javafx.stage.FileChooser;
+import java.io.File;
 import com.skillsynch.dao.SkillDAO;
 import javafx.collections.FXCollections;
 import com.skillsynch.config.DatabaseConfig;
@@ -216,138 +221,321 @@ public class StudentDashboard {
         content.getChildren().clear();
 
         Label heading = new Label("My Profile");
+        heading.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
 
-        heading.setStyle(
-                "-fx-font-size: 28px;" +
-                        "-fx-font-weight: bold;"
-        );
-
-        content.getChildren().add(heading);
-
-        try (Connection connection =
-                     DatabaseConfig.getConnection()) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
 
             StudentDAO studentDAO = new StudentDAO();
 
             Map<String, Object> student =
-                    studentDAO.getStudentById(
-                            connection,
-                            studentId
-                    );
+                    studentDAO.getStudentById(connection, studentId);
 
-            if (student == null) {
-
-                Label message = new Label(
-                        "Student profile not found."
+            if (student == null || student.isEmpty()) {
+                content.getChildren().add(
+                        new Label("Student profile not found.")
                 );
-
-                content.getChildren().add(message);
                 return;
             }
 
-            // STUDENT DETAILS
-            String name = String.valueOf(
-                    student.get("name")
+            TextField nameField = new TextField(
+                    String.valueOf(student.get("name"))
             );
 
-            String email = String.valueOf(
-                    student.get("email")
+            TextField emailField = new TextField(
+                    String.valueOf(student.get("email"))
             );
 
-            String branch = String.valueOf(
-                    student.get("branch")
+            TextField branchField = new TextField(
+                    String.valueOf(student.get("branch"))
             );
 
-            String year = String.valueOf(
-                    student.get("year")
+            TextField yearField = new TextField(
+                    String.valueOf(student.get("year"))
             );
 
-            String cgpa = String.valueOf(
-                    student.get("cgpa")
+            TextField cgpaField = new TextField(
+                    String.valueOf(student.get("cgpa"))
             );
 
-            // PROFILE CARD
-            VBox profileCard = new VBox(18);
+            Object resumeValue = student.get("resume_url");
 
-            profileCard.setPadding(new Insets(30));
-            profileCard.setMaxWidth(600);
+            TextField resumeField = new TextField(
+                    resumeValue == null ? "" : String.valueOf(resumeValue)
+            );
+            final File[] selectedResume = {null};
+            Label messageLabel = new Label();
+            Button chooseResumeButton = new Button("Choose PDF");
+            Button viewResumeButton = new Button("View Resume");
 
+            viewResumeButton.setOnAction(event -> {
+
+                try {
+
+                    String resumePath;
+
+                    if (selectedResume[0] != null) {
+                        resumePath = selectedResume[0].getAbsolutePath();
+                    } else {
+                        resumePath = resumeValue == null ? "" : resumeValue.toString();
+                    }
+
+                    if (resumePath.isEmpty()) {
+                        messageLabel.setText("Please upload a resume first.");
+                        return;
+                    }
+
+                    File resumeFile = new File(resumePath);
+
+                    if (!resumeFile.exists()) {
+                        messageLabel.setText("Resume file not found.");
+                        return;
+                    }
+
+                    java.awt.Desktop.getDesktop().open(resumeFile);
+
+                } catch (Exception ex) {
+
+                    messageLabel.setText(
+                            "Unable to open resume: " + ex.getMessage()
+                    );
+                }
+            });
+            Button downloadResumeButton = new Button("Download Resume");
+
+            downloadResumeButton.setOnAction(event -> {
+                try {
+                    String resumePath;
+
+                    if (selectedResume[0] != null) {
+                        resumePath = selectedResume[0].getAbsolutePath();
+                    } else {
+                        resumePath = resumeValue == null ? "" : resumeValue.toString();
+                    }
+
+                    if (resumePath.isEmpty()) {
+                        messageLabel.setText("Please upload a resume first.");
+                        return;
+                    }
+
+                    File resumeFile = new File(resumePath);
+
+                    if (!resumeFile.exists()) {
+                        messageLabel.setText("Resume file not found.");
+                        return;
+                    }
+
+                    FileChooser fileChooser = new FileChooser();
+                    fileChooser.setTitle("Save Resume");
+                    fileChooser.setInitialFileName("My_Resume.pdf");
+                    fileChooser.getExtensionFilters().add(
+                            new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
+                    );
+
+                    File destination = fileChooser.showSaveDialog(root.getScene().getWindow());
+
+                    if (destination != null) {
+                        Files.copy(
+                                resumeFile.toPath(),
+                                destination.toPath(),
+                                StandardCopyOption.REPLACE_EXISTING
+                        );
+
+                        messageLabel.setText("Resume downloaded successfully!");
+                    }
+
+                } catch (Exception ex) {
+                    messageLabel.setText("Download failed: " + ex.getMessage());
+                }
+            });
+            chooseResumeButton.setOnAction(event -> {
+
+                FileChooser fileChooser = new FileChooser();
+
+                fileChooser.setTitle("Select Your Resume");
+
+                fileChooser.getExtensionFilters().add(
+                        new FileChooser.ExtensionFilter(
+                                "PDF Files", "*.pdf"
+                        )
+                );
+
+                File file = fileChooser.showOpenDialog(root.getScene().getWindow());
+
+                if (file != null) {
+                    selectedResume[0] = file;
+                    resumeField.setText(file.getName());
+                }
+            });
+            nameField.setPromptText("Enter your name");
+            emailField.setPromptText("Enter your email");
+            branchField.setPromptText("Enter your branch");
+            yearField.setPromptText("Enter your year");
+            cgpaField.setPromptText("Enter your CGPA");
+            resumeField.setPromptText("Enter your resume URL");
+
+            VBox form = new VBox(12);
+
+            form.getChildren().addAll(
+                    createProfileLabel("Name", ""),
+                    nameField,
+                    createProfileLabel("Email", ""),
+                    emailField,
+                    createProfileLabel("Branch", ""),
+                    branchField,
+                    createProfileLabel("Year", ""),
+                    yearField,
+                    createProfileLabel("CGPA", ""),
+                    cgpaField,
+                    createProfileLabel("Resume", ""),
+                    resumeField,
+                    chooseResumeButton,
+                    viewResumeButton,
+                    downloadResumeButton
+
+            );
+
+            Button saveButton = new Button("Save Changes");
+            saveButton.setStyle(
+                    "-fx-background-color: #2563eb;" +
+                            "-fx-text-fill: white;" +
+                            "-fx-font-weight: bold;"
+            );
+
+
+
+            saveButton.setOnAction(event -> {
+
+                try {
+
+                    String name = nameField.getText().trim();
+                    String email = emailField.getText().trim();
+                    String branch = branchField.getText().trim();
+                    String resumeUrl = resumeField.getText().trim();
+                    if (selectedResume[0] != null) {
+
+                        if (selectedResume[0] != null) {
+
+                            Path uploadDirectory = Path.of("uploads")
+                                    .toAbsolutePath();
+
+                            Files.createDirectories(uploadDirectory);
+
+                            String fileName = "student_" + studentId + "_resume.pdf";
+
+                            Path destination = uploadDirectory.resolve(fileName);
+
+                            Files.copy(
+                                    selectedResume[0].toPath(),
+                                    destination,
+                                    StandardCopyOption.REPLACE_EXISTING
+                            );
+
+                            resumeUrl = destination.toString();
+
+                            System.out.println("Original selected file: "
+                                    + selectedResume[0].getAbsolutePath());
+
+                            System.out.println("Copied file location: "
+                                    + destination);
+
+                            System.out.println("File successfully copied: "
+                                    + Files.exists(destination));
+                        }
+                    }
+                    if (name.isEmpty() || email.isEmpty()
+                            || branch.isEmpty()) {
+
+                        messageLabel.setText(
+                                "Please fill all required fields."
+                        );
+                        return;
+                    }
+
+                    if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+                        messageLabel.setText("Enter a valid email.");
+                        return;
+                    }
+
+                    int year = Integer.parseInt(yearField.getText().trim());
+                    double cgpa = Double.parseDouble(cgpaField.getText().trim());
+
+                    if (year < 1 || year > 5) {
+                        messageLabel.setText(
+                                "Year must be between 1 and 5."
+                        );
+                        return;
+                    }
+
+                    if (cgpa < 0 || cgpa > 10) {
+                        messageLabel.setText(
+                                "CGPA must be between 0 and 10."
+                        );
+                        return;
+                    }
+
+                    try (Connection updateConnection =
+                                 DatabaseConfig.getConnection()) {
+
+                        studentDAO.updateStudent(
+                                updateConnection,
+                                studentId,
+                                name,
+                                branch,
+                                year,
+                                cgpa,
+                                email,
+                                resumeUrl
+                        );
+                    }
+
+                    messageLabel.setText("Profile updated successfully!");
+                    messageLabel.setStyle("-fx-text-fill: green;");
+
+                    showProfile();
+
+                } catch (NumberFormatException ex) {
+
+                    messageLabel.setText(
+                            "Year and CGPA must be valid numbers."
+                    );
+
+                } catch (Exception ex) {
+
+                    messageLabel.setText(
+                            "Error updating profile: " + ex.getMessage()
+                    );
+                }
+            });
+
+            VBox profileCard = new VBox(15);
+            profileCard.setPadding(new Insets(25));
+            profileCard.setMaxWidth(550);
             profileCard.setStyle(
                     "-fx-background-color: white;" +
-                            "-fx-background-radius: 12px;" +
-                            "-fx-border-color: #E2E8F0;" +
-                            "-fx-border-radius: 12px;"
-            );
-
-            Label nameLabel = createProfileLabel(
-                    "Name", name
-            );
-
-            Label emailLabel = createProfileLabel(
-                    "Email", email
-            );
-
-            Label branchLabel = createProfileLabel(
-                    "Branch", branch
-            );
-
-            Label yearLabel = createProfileLabel(
-                    "Year", year
-            );
-
-            Label cgpaLabel = createProfileLabel(
-                    "CGPA", cgpa
+                            "-fx-background-radius: 12;" +
+                            "-fx-border-color: #e5e7eb;" +
+                            "-fx-border-radius: 12;"
             );
 
             profileCard.getChildren().addAll(
-                    nameLabel,
-                    new Separator(),
-                    emailLabel,
-                    new Separator(),
-                    branchLabel,
-                    new Separator(),
-                    yearLabel,
-                    new Separator(),
-                    cgpaLabel
+                    form,
+                    saveButton,
+                    messageLabel
             );
 
-            content.getChildren().add(profileCard);
-
-        } catch (Exception ex) {
-
-            ex.printStackTrace();
-
-            Label error = new Label(
-                    "Unable to load student profile."
+            content.getChildren().addAll(
+                    heading,
+                    profileCard
             );
 
-            error.setStyle(
-                    "-fx-text-fill: red;" +
-                            "-fx-font-size: 15px;"
-            );
+        } catch (Exception e) {
 
-            content.getChildren().add(error);
+            content.getChildren().add(
+                    new Label("Error loading profile: " + e.getMessage())
+            );
+            e.printStackTrace();
         }
     }
-
-    // PROFILE LABEL DESIGN
-    private Label createProfileLabel(
-            String field,
-            String value
-    ) {
-
-        Label label = new Label(
-                field + " : " + value
-        );
-
-        label.setStyle(
-                "-fx-font-size: 16px;" +
-                        "-fx-text-fill: #334155;"
-        );
-
-        return label;
-    }
-
     // MY SKILLS PAGE
     private void showSkills() {
 
@@ -677,5 +865,14 @@ public class StudentDashboard {
                 heading,
                 message
         );
+    }
+    private Label createProfileLabel(String field, String value) {
+        Label label = new Label(field);
+        label.setStyle(
+                "-fx-font-size: 14px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-text-fill: #374151;"
+        );
+        return label;
     }
 }

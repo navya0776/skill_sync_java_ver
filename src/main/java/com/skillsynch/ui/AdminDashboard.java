@@ -1,5 +1,6 @@
 package com.skillsynch.ui;
 import java.util.Locale;
+import com.skillsynch.dao.ApplicationDAO;
 import com.skillsynch.dao.InternshipDAO;
 import javafx.util.StringConverter;
 import com.skillsynch.dao.StudentDAO;
@@ -76,11 +77,7 @@ public class AdminDashboard {
         manageInternshipsBtn.setOnAction(e -> showManageInternships());
 
         internshipsBtn.setOnAction(e -> showInternshipApprovals());
-        applicationsBtn.setOnAction(e ->
-                showPage("Applications",
-                        "Monitor student internship applications.")
-        );
-
+        applicationsBtn.setOnAction(e -> showApplications());
         reportsBtn.setOnAction(e ->
                 showPlacementReports()
         );
@@ -338,10 +335,20 @@ public class AdminDashboard {
             );
         }
 
+        ScrollPane scrollPane = new ScrollPane(internshipList);
+
+        scrollPane.setFitToWidth(true);
+        scrollPane.setFitToHeight(true);
+        scrollPane.setMaxHeight(Double.MAX_VALUE);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
         content.getChildren().addAll(
                 heading,
                 message,
-                internshipList
+                scrollPane
         );
     }
 
@@ -379,18 +386,58 @@ public class AdminDashboard {
 
         Label heading = createHeading("Placement Reports");
 
-        HBox cards = new HBox(20);
+        try (Connection connection = DatabaseConfig.getConnection()) {
 
-        cards.getChildren().addAll(
-                createCard("Total Applications", "0"),
-                createCard("Selected Students", "0"),
-                createCard("Offers Extended", "0")
-        );
+            ApplicationDAO dao = new ApplicationDAO();
 
-        content.getChildren().addAll(
-                heading,
-                cards
-        );
+            Map<String, Integer> stats =
+                    dao.getApplicationStatistics(connection);
+
+            HBox cards = new HBox(20);
+
+            cards.getChildren().addAll(
+                    createCard(
+                            "Total Applications",
+                            String.valueOf(stats.get("total_applications"))
+                    ),
+                    createCard(
+                            "Selected Students",
+                            String.valueOf(stats.get("selected"))
+                    ),
+                    createCard(
+                            "Shortlisted Students",
+                            String.valueOf(stats.get("shortlisted"))
+                    ),
+                    createCard(
+                            "Rejected Applications",
+                            String.valueOf(stats.get("rejected"))
+                    ),
+                    createCard(
+                            "Offers Extended",
+                            String.valueOf(stats.get("offers_extended"))
+                    )
+            );
+
+            cards.setSpacing(15);
+
+            content.getChildren().addAll(
+                    heading,
+                    cards
+            );
+
+        } catch (Exception e) {
+
+            Label errorLabel = new Label(
+                    "Error loading placement reports: " + e.getMessage()
+            );
+
+            content.getChildren().addAll(
+                    heading,
+                    errorLabel
+            );
+
+            e.printStackTrace();
+        }
     } // End of showPlacementReports()
 
 
@@ -972,6 +1019,148 @@ public class AdminDashboard {
         );
 
         displayStudents.run();
+    }
+    private void showApplications() {
+
+        content.getChildren().clear();
+
+        Label heading = createHeading("All Student Applications");
+
+        Label description = new Label(
+                "Monitor applications submitted by students across all companies."
+        );
+
+        TextField searchField = new TextField();
+        searchField.setPromptText("Search by student name, email or company...");
+        searchField.setMaxWidth(450);
+
+        VBox applicationList = new VBox(12);
+
+        List<Map<String, Object>> allApplications = new java.util.ArrayList<>();
+
+        try (Connection connection = DatabaseConfig.getConnection()) {
+
+            ApplicationDAO dao = new ApplicationDAO();
+
+            allApplications.addAll(dao.getAllApplications(connection));
+
+        } catch (Exception e) {
+            applicationList.getChildren().add(
+                    new Label("Error loading applications: " + e.getMessage())
+            );
+        }
+
+        Runnable displayApplications = () -> {
+
+            applicationList.getChildren().clear();
+
+            String search = searchField.getText()
+                    .trim()
+                    .toLowerCase(Locale.ROOT);
+
+            int count = 0;
+
+            for (Map<String, Object> application : allApplications) {
+
+                String studentName = String.valueOf(application.get("student_name"));
+                String email = String.valueOf(application.get("email"));
+                String company = String.valueOf(application.get("company_name"));
+
+                if (!studentName.toLowerCase(Locale.ROOT).contains(search)
+                        && !email.toLowerCase(Locale.ROOT).contains(search)
+                        && !company.toLowerCase(Locale.ROOT).contains(search)) {
+                    continue;
+                }
+
+                count++;
+
+                Label studentLabel = new Label("Student: " + studentName);
+                studentLabel.setStyle(
+                        "-fx-font-size: 18px; -fx-font-weight: bold;"
+                );
+
+                Label idLabel = new Label(
+                        "Application ID: " + application.get("application_id")
+                );
+
+                Label emailLabel = new Label("Email: " + email);
+
+                Label branchLabel = new Label(
+                        "Branch: " + application.get("branch")
+                );
+
+                Label cgpaLabel = new Label(
+                        "CGPA: " + application.get("cgpa")
+                );
+
+                Label companyLabel = new Label("Company: " + company);
+
+                Label roleLabel = new Label(
+                        "Internship Role: " + application.get("role")
+                );
+
+                Label dateLabel = new Label(
+                        "Application Date: " + application.get("application_date")
+                );
+
+                Label statusLabel = new Label(
+                        "Status: " + application.get("status")
+                );
+
+                VBox card = new VBox(
+                        8,
+                        studentLabel,
+                        idLabel,
+                        emailLabel,
+                        branchLabel,
+                        cgpaLabel,
+                        companyLabel,
+                        roleLabel,
+                        dateLabel,
+                        statusLabel
+                );
+
+                card.setPadding(new Insets(18));
+                card.setStyle(
+                        "-fx-background-color: white;" +
+                                "-fx-background-radius: 10px;" +
+                                "-fx-border-color: #E2E8F0;" +
+                                "-fx-border-radius: 10px;"
+                );
+
+                applicationList.getChildren().add(card);
+            }
+
+            if (count == 0) {
+                applicationList.getChildren().add(
+                        new Label("No matching applications found.")
+                );
+            }
+        };
+
+        searchField.textProperty().addListener(
+                (observable, oldValue, newValue) ->
+                        displayApplications.run()
+        );
+
+        ScrollPane scrollPane = new ScrollPane(applicationList);
+
+        scrollPane.setFitToWidth(true);
+        scrollPane.setFitToHeight(true);
+        scrollPane.setMaxHeight(Double.MAX_VALUE);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        content.getChildren().addAll(
+                heading,
+                description,
+                searchField,
+                scrollPane
+        );
+
+        displayApplications.run();
     }
 }
 

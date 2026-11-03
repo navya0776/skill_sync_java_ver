@@ -71,4 +71,62 @@ public class CompanyDAO {
 
         return companies;
     }
+    public Map<String, Object> getCompanyById(
+            Connection connection,
+            int companyId
+    ) throws Exception {
+
+        String sql = """
+        SELECT company_id, company_name, industry, description
+        FROM Companies
+        WHERE company_id = ?
+        """;
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, companyId);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+
+                if (resultSet.next()) {
+
+                    Map<String, Object> company = new HashMap<>();
+
+                    company.put("company_id", resultSet.getInt("company_id"));
+                    company.put("company_name", resultSet.getString("company_name"));
+                    company.put("industry", resultSet.getString("industry"));
+                    company.put("description", resultSet.getString("description"));
+
+                    return company;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public boolean updateCompany(
+            Connection connection,
+            int companyId,
+            String companyName,
+            String industry,
+            String description
+    ) throws Exception {
+
+        String sql = """
+        UPDATE Companies
+        SET company_name = ?, industry = ?, description = ?
+        WHERE company_id = ?
+        """;
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, companyName);
+            statement.setString(2, industry);
+            statement.setString(3, description);
+            statement.setInt(4, companyId);
+
+            return statement.executeUpdate() > 0;
+        }
+    }
 }

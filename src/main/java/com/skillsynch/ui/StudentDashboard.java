@@ -1,4 +1,7 @@
 package com.skillsynch.ui;
+import com.skillsynch.dao.ApplicationDAO;
+import com.skillsynch.dao.InternshipDAO;
+import com.skillsynch.dao.EligibilityDAO;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -53,6 +56,7 @@ public class StudentDashboard {
         Button internshipsBtn = createButton("Internships");
         Button eligibilityBtn = createButton("Eligibility");
         Button applicationsBtn = createButton("My Applications");
+        Button offersBtn = createButton("My Offers");
         Button logoutBtn = createButton("Logout");
 
         sidebar.getChildren().addAll(
@@ -64,6 +68,7 @@ public class StudentDashboard {
                 internshipsBtn,
                 eligibilityBtn,
                 applicationsBtn,
+                offersBtn,
                 logoutBtn
         );
 
@@ -83,28 +88,15 @@ public class StudentDashboard {
         profileBtn.setOnAction(e -> showProfile());
 
         skillsBtn.setOnAction(e -> showSkills());
+        offersBtn.setOnAction(e -> showMyOffers());
+        internshipsBtn.setOnAction(e -> {
+            System.out.println("INTERNSHIPS BUTTON CLICKED");
+            showInternships();
+        });
 
-        internshipsBtn.setOnAction(e ->
-                showPage(
-                        "Available Internships",
-                        "Browse available internships here."
-                )
-        );
+        eligibilityBtn.setOnAction(e -> showEligibility());
 
-        eligibilityBtn.setOnAction(e ->
-                showPage(
-                        "Eligibility",
-                        "Check your internship eligibility here."
-                )
-        );
-
-        applicationsBtn.setOnAction(e ->
-                showPage(
-                        "My Applications",
-                        "Track your internship applications here."
-                )
-        );
-
+        applicationsBtn.setOnAction(e -> showMyApplications());
         logoutBtn.setOnAction(e -> logout.run());
 
         showDashboard();
@@ -402,7 +394,6 @@ public class StudentDashboard {
             );
 
 
-
             saveButton.setOnAction(event -> {
 
                 try {
@@ -536,6 +527,7 @@ public class StudentDashboard {
             e.printStackTrace();
         }
     }
+
     // MY SKILLS PAGE
     private void showSkills() {
 
@@ -866,6 +858,7 @@ public class StudentDashboard {
                 message
         );
     }
+
     private Label createProfileLabel(String field, String value) {
         Label label = new Label(field);
         label.setStyle(
@@ -874,5 +867,420 @@ public class StudentDashboard {
                         "-fx-text-fill: #374151;"
         );
         return label;
+    }
+
+    private void showInternships() {
+
+        content.getChildren().clear();
+
+        Label heading = new Label("Available Internships");
+        heading.setStyle("-fx-font-size: 26px; -fx-font-weight: bold;");
+
+        VBox internshipList = new VBox(15);
+
+        try (Connection connection = DatabaseConfig.getConnection()) {
+
+            InternshipDAO dao = new InternshipDAO();
+
+            List<Map<String, Object>> internships =
+                    dao.getAllInternships(connection);
+
+            System.out.println("Total internships: " + internships.size());
+
+            for (Map<String, Object> internship : internships) {
+                System.out.println("Role: " + internship.get("role")
+                        + " | Status: [" + internship.get("status") + "]");
+            }
+            for (Map<String, Object> internship : internships) {
+
+                String status = String.valueOf(internship.get("status"));
+
+                if (!status.equals("Approved") &&
+                        !status.equals("Published")) {
+                    continue;
+                }
+
+
+                Label details = new Label(
+                        "Company: " + internship.get("company_name") +
+                                "\nRole: " + internship.get("role") +
+                                "\nDescription: " + internship.get("description") +
+                                "\nMinimum CGPA: " + internship.get("min_cgpa") +
+                                "\nPositions: " + internship.get("number_of_positions") +
+                                "\nDeadline: " + internship.get("application_deadline")
+                );
+
+                details.setStyle(
+                        "-fx-padding: 15px;" +
+                                "-fx-font-size: 14px;" +
+                                "-fx-background-color: white;" +
+                                "-fx-border-color: #cccccc;"
+                );
+
+                Button applyButton = new Button("Apply Now");
+                try (Connection checkConnection = DatabaseConfig.getConnection()) {
+
+                    ApplicationDAO applicationDAO = new ApplicationDAO();
+
+                    boolean alreadyApplied = applicationDAO.hasApplied(
+                            checkConnection,
+                            studentId,
+                            Integer.parseInt(String.valueOf(internship.get("intern_id")))
+                    );
+
+                    if (alreadyApplied) {
+                        applyButton.setText("Applied");
+                        applyButton.setDisable(true);
+                    }
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+                applyButton.setOnAction(e -> {
+                    try (Connection applyConnection = DatabaseConfig.getConnection()) {
+
+                        ApplicationDAO applicationDAO = new ApplicationDAO();
+
+                        int internId = Integer.parseInt(
+                                String.valueOf(internship.get("intern_id"))
+                        );
+
+                        boolean applied = applicationDAO.applyForInternship(
+                                applyConnection, studentId, internId
+                        );
+
+                        if (applied) {
+                            applyButton.setText("Applied");
+                            applyButton.setDisable(true);
+
+                            new Alert(Alert.AlertType.INFORMATION,
+                                    "Application submitted successfully!").showAndWait();
+
+                        } else {
+                            applyButton.setText("Applied");
+                            applyButton.setDisable(true);
+
+                            new Alert(Alert.AlertType.WARNING,
+                                    "You have already applied for this internship.").showAndWait();
+                        }
+
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                        new Alert(Alert.AlertType.ERROR,
+                                "Application failed: " + ex.getMessage()).showAndWait();
+                    }
+                });
+
+                VBox internshipCard = new VBox(10, details, applyButton);
+                internshipCard.setStyle("-fx-padding: 10px;");
+
+                internshipList.getChildren().add(internshipCard);
+
+            }
+
+            if (internshipList.getChildren().isEmpty()) {
+                internshipList.getChildren().add(
+                        new Label("No internships available currently.")
+                );
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            new Alert(Alert.AlertType.ERROR,
+                    "Error loading internships: " + ex.getMessage())
+                    .showAndWait();
+        }
+
+        content.getChildren().addAll(heading, internshipList);
+    }
+
+    private void showMyApplications() {
+
+        content.getChildren().clear();
+
+        Label heading = new Label("My Applications");
+        heading.setStyle("-fx-font-size: 26px; -fx-font-weight: bold;");
+
+        VBox applicationList = new VBox(15);
+
+        try (Connection connection = DatabaseConfig.getConnection()) {
+
+            ApplicationDAO dao = new ApplicationDAO();
+
+            List<Map<String, Object>> applications =
+                    dao.getStudentApplications(connection, studentId);
+
+            for (Map<String, Object> application : applications) {
+
+                Label details = new Label(
+                        "Company: " + application.get("company_name") +
+                                "\nRole: " + application.get("role") +
+                                "\nApplication Date: " + application.get("application_date") +
+                                "\nStatus: " + application.get("status")
+                );
+
+                details.setStyle(
+                        "-fx-padding: 15px;" +
+                                "-fx-font-size: 14px;" +
+                                "-fx-background-color: white;" +
+                                "-fx-border-color: #cccccc;"
+                );
+
+                applicationList.getChildren().add(details);
+            }
+
+            if (applications.isEmpty()) {
+                applicationList.getChildren().add(
+                        new Label("You have not applied for any internships yet.")
+                );
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+
+            new Alert(
+                    Alert.AlertType.ERROR,
+                    "Error loading applications: " + ex.getMessage()
+            ).showAndWait();
+        }
+
+        content.getChildren().addAll(heading, applicationList);
+    }
+
+    private void showEligibility() {
+
+        content.getChildren().clear();
+
+        Label heading = new Label("My Internship Eligibility");
+        heading.setStyle("-fx-font-size: 26px; -fx-font-weight: bold;");
+
+        VBox eligibilityList = new VBox(15);
+
+        try (Connection connection = DatabaseConfig.getConnection()) {
+
+            InternshipDAO internshipDAO = new InternshipDAO();
+            EligibilityDAO eligibilityDAO = new EligibilityDAO();
+
+            // Calculate eligibility for available internships
+            List<Map<String, Object>> internships =
+                    internshipDAO.getAllInternships(connection);
+
+            for (Map<String, Object> internship : internships) {
+
+                String status = String.valueOf(internship.get("status"));
+
+                if (status.equals("Approved") || status.equals("Published")) {
+
+                    int internId = Integer.parseInt(
+                            String.valueOf(internship.get("intern_id"))
+                    );
+
+                    eligibilityDAO.evaluateAndSave(
+                            connection, studentId, internId
+                    );
+                }
+            }
+
+            // Retrieve eligibility results
+            List<Map<String, Object>> results =
+                    eligibilityDAO.getStudentEligibility(connection, studentId);
+
+            for (Map<String, Object> result : results) {
+
+                Label details = new Label(
+                        "Company: " + result.get("company_name") +
+                                "\nRole: " + result.get("role") +
+                                "\nSkill Match: " + result.get("match_percentage") + "%" +
+                                "\nEligibility: " + result.get("eligibility_status")
+                );
+
+                details.setStyle(
+                        "-fx-padding: 15px;" +
+                                "-fx-font-size: 14px;" +
+                                "-fx-background-color: white;" +
+                                "-fx-border-color: #cccccc;"
+                );
+
+                eligibilityList.getChildren().add(details);
+            }
+
+            if (results.isEmpty()) {
+                eligibilityList.getChildren().add(
+                        new Label("No internship eligibility results available.")
+                );
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+
+            new Alert(
+                    Alert.AlertType.ERROR,
+                    "Error checking eligibility: " + ex.getMessage()
+            ).showAndWait();
+        }
+
+        content.getChildren().addAll(heading, eligibilityList);
+    }
+
+    private void showMyOffers() {
+
+        content.getChildren().clear();
+
+        Label heading = createHeading("My Offers");
+
+        VBox offerList = new VBox(15);
+
+        try (Connection connection = DatabaseConfig.getConnection()) {
+
+            ApplicationDAO dao = new ApplicationDAO();
+
+            List<Map<String, Object>> offers =
+                    dao.getStudentOffers(connection, studentId);
+
+            if (offers.isEmpty()) {
+
+                offerList.getChildren().add(
+                        new Label("You have not received any offers yet.")
+                );
+
+            } else {
+
+                for (Map<String, Object> offer : offers) {
+
+                    int offerId =
+                            ((Number) offer.get("offer_id")).intValue();
+
+                    String status = String.valueOf(offer.get("status"));
+
+                    Label companyLabel = new Label(
+                            "Company: " + offer.get("company_name")
+                    );
+
+                    Label roleLabel = new Label(
+                            "Role: " + offer.get("role")
+                    );
+
+                    Label joiningLabel = new Label(
+                            "Joining Date: " + offer.get("joining_date")
+                    );
+
+                    Label statusLabel = new Label(
+                            "Offer Status: " + status
+                    );
+
+                    Button acceptButton = new Button("Accept Offer");
+                    Button rejectButton = new Button("Reject Offer");
+
+                    if ("Pending".equals(status)) {
+
+                        acceptButton.setOnAction(e ->
+                                respondToOffer(offerId, "Accepted")
+                        );
+
+                        rejectButton.setOnAction(e ->
+                                respondToOffer(offerId, "Rejected")
+                        );
+
+                    } else {
+
+                        acceptButton.setDisable(true);
+                        rejectButton.setDisable(true);
+                    }
+
+                    HBox buttons = new HBox(
+                            10,
+                            acceptButton,
+                            rejectButton
+                    );
+
+                    VBox card = new VBox(
+                            10,
+                            companyLabel,
+                            roleLabel,
+                            joiningLabel,
+                            statusLabel,
+                            buttons
+                    );
+
+                    card.setPadding(new Insets(18));
+
+                    card.setStyle(
+                            "-fx-background-color: white;" +
+                                    "-fx-background-radius: 10px;" +
+                                    "-fx-border-color: #E2E8F0;"
+                    );
+
+                    offerList.getChildren().add(card);
+                }
+            }
+
+        } catch (Exception e) {
+
+            offerList.getChildren().add(
+                    new Label("Error loading offers: " + e.getMessage())
+            );
+        }
+
+        ScrollPane scrollPane = new ScrollPane(offerList);
+        scrollPane.setFitToWidth(true);
+
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        content.getChildren().addAll(heading, scrollPane);
+    }
+
+    private void respondToOffer(int offerId, String status) {
+
+        Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
+
+        confirmation.setTitle("Offer Confirmation");
+        confirmation.setHeaderText("Confirm your decision");
+        confirmation.setContentText(
+                "Are you sure you want to " + status.toLowerCase() + " this offer?"
+        );
+
+        confirmation.showAndWait().ifPresent(response -> {
+
+            if (response == ButtonType.OK) {
+
+                try (Connection connection = DatabaseConfig.getConnection()) {
+
+                    ApplicationDAO dao = new ApplicationDAO();
+
+                    dao.updateOfferStatus(
+                            connection,
+                            offerId,
+                            studentId,
+                            status
+                    );
+
+                    Alert success = new Alert(Alert.AlertType.INFORMATION);
+                    success.setTitle("Success");
+                    success.setHeaderText(null);
+                    success.setContentText("Offer " + status.toLowerCase() + " successfully!");
+                    success.showAndWait();
+
+                    showMyOffers();
+
+                } catch (Exception e) {
+
+                    Alert error = new Alert(Alert.AlertType.ERROR);
+                    error.setTitle("Error");
+                    error.setHeaderText("Could not update offer");
+                    error.setContentText(e.getMessage());
+                    error.showAndWait();
+                }
+            }
+        });
+    }
+
+    private Label createHeading(String text) {
+        Label heading = new Label(text);
+        heading.setStyle(
+                "-fx-font-size: 24px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-text-fill: #2c3e50;"
+        );
+        return heading;
     }
 }

@@ -75,18 +75,20 @@ public class Main extends Application {
     }
 
     // COMPANY DASHBOARD
-    private void showCompanyDashboard() {
+    private void showCompanyDashboard(int companyId) {
 
         CompanyDashboard dashboard = new CompanyDashboard();
 
         Scene scene = new Scene(
-                dashboard.getView(this::showLogin),
+                dashboard.getView(this::showLogin, companyId),
                 1100,
                 700
         );
 
         stage.setScene(scene);
     }
+
+
 
     // ADMIN DASHBOARD
     private void showAdminDashboard() {
@@ -123,9 +125,14 @@ public class Main extends Application {
                 break;
 
             case "company":
-                showCompanyDashboard();
-                break;
 
+                if (user.getCompanyId() == null) {
+                    showError("No company profile is linked to this account.");
+                    return;
+                }
+
+                showCompanyDashboard(user.getCompanyId());
+                break;
             case "admin":
                 showAdminDashboard();
                 break;

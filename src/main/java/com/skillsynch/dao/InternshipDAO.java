@@ -89,17 +89,22 @@ public class InternshipDAO {
         }
     }
 
+
     public List<Map<String, Object>> getAllInternships(
             Connection connection
     ) throws Exception {
 
         String sql = """
-            SELECT intern_id, company_id, company_name, role,
-                   description, min_cgpa, number_of_positions,
-                   application_deadline, status
-            FROM Internships
-            ORDER BY intern_id DESC
-            """;
+        SELECT i.intern_id, i.company_id,
+               c.company_name AS company_name,
+               i.role, i.description, i.min_cgpa,
+               i.number_of_positions,
+               i.application_deadline, i.status
+        FROM Internships i
+        LEFT JOIN Companies c
+            ON i.company_id = c.company_id
+        ORDER BY i.intern_id DESC
+        """;
 
         List<Map<String, Object>> internships = new ArrayList<>();
 
@@ -129,6 +134,7 @@ public class InternshipDAO {
 
         return internships;
     }
+
     public void addInternshipSkill(
             Connection connection,
             int internshipId,
@@ -193,23 +199,29 @@ public class InternshipDAO {
             statement.executeBatch();
         }
     }
+
     public List<Map<String, Object>> getCompanyInternships(
             Connection connection,
             int companyId
     ) throws Exception {
 
         String sql = """
-        SELECT intern_id, company_id, company_name, role,
-               description, min_cgpa, number_of_positions,
-               application_deadline, status
-        FROM Internships
-        WHERE company_id = ?
-        ORDER BY intern_id DESC
+        SELECT i.intern_id, i.company_id,
+               c.company_name AS company_name,
+               i.role, i.description, i.min_cgpa,
+               i.number_of_positions,
+               i.application_deadline, i.status
+        FROM Internships i
+        LEFT JOIN Companies c
+            ON i.company_id = c.company_id
+        WHERE i.company_id = ?
+        ORDER BY i.intern_id DESC
         """;
 
         List<Map<String, Object>> internships = new ArrayList<>();
 
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement =
+                     connection.prepareStatement(sql)) {
 
             statement.setInt(1, companyId);
 
@@ -238,4 +250,5 @@ public class InternshipDAO {
 
         return internships;
     }
+
 }

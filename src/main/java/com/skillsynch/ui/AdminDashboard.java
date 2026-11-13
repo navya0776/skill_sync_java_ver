@@ -23,7 +23,6 @@ public class AdminDashboard {
 
     public Parent getView(Runnable logout) {
 
-        // Sidebar
         VBox sidebar = new VBox(15);
         sidebar.setPadding(new Insets(25));
         sidebar.setPrefWidth(230);
@@ -42,9 +41,11 @@ public class AdminDashboard {
         Button internshipsBtn = createButton("Approve Internships");
         Button manageInternshipsBtn = createButton("Manage Internships");
         Button applicationsBtn = createButton("Applications");
+        Button offersBtn = createButton("Manage Offers");
         Button reportsBtn = createButton("Placement Reports");
         Button logoutBtn = createButton("Logout");
         Button skillsBtn = createButton("Manage Skills");
+
         sidebar.getChildren().addAll(
                 logo,
                 new Separator(),
@@ -55,33 +56,26 @@ public class AdminDashboard {
                 manageInternshipsBtn,
                 internshipsBtn,
                 applicationsBtn,
+                offersBtn,
                 reportsBtn,
                 logoutBtn
         );
 
-        // Main content
         content.setPadding(new Insets(30));
         content.setStyle("-fx-background-color: #F8FAFC;");
 
         root.setLeft(sidebar);
         root.setCenter(content);
 
-        // Navigation
         dashboardBtn.setOnAction(e -> showDashboard());
         skillsBtn.setOnAction(e -> showManageSkills());
         studentsBtn.setOnAction(e -> showManageStudents());
-
-        companiesBtn.setOnAction(e ->
-                showManageCompanies()
-        );
+        companiesBtn.setOnAction(e -> showManageCompanies());
         manageInternshipsBtn.setOnAction(e -> showManageInternships());
-
         internshipsBtn.setOnAction(e -> showInternshipApprovals());
         applicationsBtn.setOnAction(e -> showApplications());
-        reportsBtn.setOnAction(e ->
-                showPlacementReports()
-        );
-
+        offersBtn.setOnAction(e -> showManageOffers());
+        reportsBtn.setOnAction(e -> showPlacementReports());
         logoutBtn.setOnAction(e -> logout.run());
 
         showDashboard();
@@ -114,19 +108,39 @@ public class AdminDashboard {
         Label heading = createHeading("Admin Dashboard");
         Label welcome = new Label("Welcome to SkillSynch Admin Panel!");
 
-        HBox cards = new HBox(20);
+        try (Connection connection = DatabaseConfig.getConnection()) {
 
-        cards.getChildren().addAll(
-                createCard("Total Students", "0"),
-                createCard("Total Companies", "0"),
-                createCard("Internships", "0")
-        );
+            StudentDAO studentDAO = new StudentDAO();
+            CompanyDAO companyDAO = new CompanyDAO();
+            InternshipDAO internshipDAO = new InternshipDAO();
 
-        content.getChildren().addAll(
-                heading,
-                welcome,
-                cards
-        );
+            int totalStudents =
+                    studentDAO.getAllStudents(connection).size();
+
+            int totalCompanies =
+                    companyDAO.getAllCompanies(connection).size();
+
+            int totalInternships =
+                    internshipDAO.getAllInternships(connection).size();
+
+            HBox cards = new HBox(20);
+
+            cards.getChildren().addAll(
+                    createCard("Total Students", String.valueOf(totalStudents)),
+                    createCard("Total Companies", String.valueOf(totalCompanies)),
+                    createCard("Internships", String.valueOf(totalInternships))
+            );
+
+            content.getChildren().addAll(heading, welcome, cards);
+
+        } catch (Exception e) {
+
+            Label error = new Label(
+                    "Could not load dashboard statistics: " + e.getMessage()
+            );
+            error.setStyle("-fx-text-fill: #DC2626;");
+            content.getChildren().addAll(heading, welcome, error);
+        }
     }
 
     private VBox createCard(String title, String value) {
@@ -185,7 +199,6 @@ public class AdminDashboard {
 
         content.getChildren().addAll(heading, message);
     }
-
 
     private void showInternshipApprovals() {
 
@@ -281,23 +294,19 @@ public class AdminDashboard {
                                         "-fx-padding: 10px;"
                         );
 
-                        approveBtn.setOnAction(e -> {
+                        approveBtn.setOnAction(e ->
+                                updateInternshipStatus(
+                                        internshipId,
+                                        "Approved"
+                                )
+                        );
 
-                            updateInternshipStatus(
-                                    internshipId,
-                                    "Approved"
-                            );
-
-                        });
-
-                        rejectBtn.setOnAction(e -> {
-
-                            updateInternshipStatus(
-                                    internshipId,
-                                    "Rejected"
-                            );
-
-                        });
+                        rejectBtn.setOnAction(e ->
+                                updateInternshipStatus(
+                                        internshipId,
+                                        "Rejected"
+                                )
+                        );
 
                         buttons.getChildren().addAll(
                                 approveBtn,
@@ -379,7 +388,6 @@ public class AdminDashboard {
         }
     }
 
-
     private void showPlacementReports() {
 
         content.getChildren().clear();
@@ -407,6 +415,10 @@ public class AdminDashboard {
                     createCard(
                             "Shortlisted Students",
                             String.valueOf(stats.get("shortlisted"))
+                    ),
+                    createCard(
+                            "Offers Accepted",
+                            String.valueOf(stats.get("offers_accepted"))
                     ),
                     createCard(
                             "Rejected Applications",
@@ -438,8 +450,7 @@ public class AdminDashboard {
 
             e.printStackTrace();
         }
-    } // End of showPlacementReports()
-
+    }
 
     private void showManageSkills() {
 
@@ -519,6 +530,7 @@ public class AdminDashboard {
                 form
         );
     }
+
     private void showManageCompanies() {
 
         content.getChildren().clear();
@@ -558,6 +570,17 @@ public class AdminDashboard {
         listHeading.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
         VBox companyList = new VBox(10);
+        companyList.setPadding(new Insets(10));
+
+        ScrollPane scrollPane = new ScrollPane(companyList);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setFitToHeight(false);
+        scrollPane.setPannable(true);
+        scrollPane.setPrefHeight(300);
+        scrollPane.setMaxWidth(Double.MAX_VALUE);
+        scrollPane.setStyle("-fx-background-color: transparent;");
+
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
         Runnable loadCompanies = () -> {
 
@@ -584,6 +607,8 @@ public class AdminDashboard {
                                     + company.get("industry")
                     );
 
+                    companyLabel.setMaxWidth(Double.MAX_VALUE);
+                    companyLabel.setWrapText(true);
                     companyLabel.setStyle(
                             "-fx-font-size: 14px; -fx-padding: 8px;"
                     );
@@ -592,7 +617,9 @@ public class AdminDashboard {
                 }
 
             } catch (Exception e) {
-                messageLabel.setText("Error loading companies: " + e.getMessage());
+                messageLabel.setText(
+                        "Error loading companies: " + e.getMessage()
+                );
             }
         };
 
@@ -603,7 +630,9 @@ public class AdminDashboard {
             String description = descriptionField.getText().trim();
 
             if (companyName.isEmpty() || industry.isEmpty()) {
-                messageLabel.setText("Company name and industry are required.");
+                messageLabel.setText(
+                        "Company name and industry are required."
+                );
                 return;
             }
 
@@ -635,7 +664,7 @@ public class AdminDashboard {
                 heading,
                 form,
                 listHeading,
-                companyList
+                scrollPane
         );
 
         loadCompanies.run();
@@ -648,7 +677,6 @@ public class AdminDashboard {
         Label heading = new Label("Manage Internships");
         heading.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
 
-        // Company dropdown
         ComboBox<Map<String, Object>> companyDropdown = new ComboBox<>();
         companyDropdown.setPromptText("Select a company");
         companyDropdown.setMaxWidth(Double.MAX_VALUE);
@@ -666,7 +694,6 @@ public class AdminDashboard {
             }
         });
 
-        // Internship fields
         TextField roleField = new TextField();
         roleField.setPromptText("Enter job role");
 
@@ -706,7 +733,6 @@ public class AdminDashboard {
         form.setPadding(new Insets(15));
         form.setMaxWidth(500);
 
-        // Load companies from database
         try (Connection connection = DatabaseConfig.getConnection()) {
 
             CompanyDAO companyDAO = new CompanyDAO();
@@ -722,7 +748,6 @@ public class AdminDashboard {
             );
         }
 
-        // Add internship
         addButton.setOnAction(e -> {
 
             Map<String, Object> selectedCompany =
@@ -815,6 +840,7 @@ public class AdminDashboard {
 
         content.getChildren().addAll(heading, form);
     }
+
     private void showManageStudents() {
 
         content.getChildren().clear();
@@ -833,7 +859,6 @@ public class AdminDashboard {
 
         List<Map<String, Object>> allStudents = new java.util.ArrayList<>();
 
-        // Load students from database
         try (Connection connection = DatabaseConfig.getConnection()) {
 
             StudentDAO studentDAO = new StudentDAO();
@@ -849,7 +874,6 @@ public class AdminDashboard {
             );
         }
 
-        // Display students
         Runnable displayStudents = () -> {
 
             studentList.getChildren().clear();
@@ -909,7 +933,9 @@ public class AdminDashboard {
                                         : student.get("resume_url")
                         )
                 );
-                int studentId = ((Number) student.get("student_id")).intValue();
+
+                int studentId =
+                        ((Number) student.get("student_id")).intValue();
 
                 Button deleteBtn = new Button("Delete Student");
 
@@ -922,7 +948,8 @@ public class AdminDashboard {
 
                 deleteBtn.setOnAction(e -> {
 
-                    Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
+                    Alert confirmation =
+                            new Alert(Alert.AlertType.CONFIRMATION);
 
                     confirmation.setTitle("Delete Student");
                     confirmation.setHeaderText("Delete " + name + "?");
@@ -945,15 +972,21 @@ public class AdminDashboard {
 
                                 showManageStudents();
 
-                                Alert success = new Alert(Alert.AlertType.INFORMATION);
+                                Alert success =
+                                        new Alert(Alert.AlertType.INFORMATION);
+
                                 success.setTitle("Success");
                                 success.setHeaderText(null);
-                                success.setContentText("Student deleted successfully!");
+                                success.setContentText(
+                                        "Student deleted successfully!"
+                                );
                                 success.showAndWait();
 
                             } catch (Exception ex) {
 
-                                Alert error = new Alert(Alert.AlertType.WARNING);
+                                Alert error =
+                                        new Alert(Alert.AlertType.WARNING);
+
                                 error.setTitle("Cannot Delete Student");
                                 error.setHeaderText("Student deletion failed");
                                 error.setContentText(
@@ -966,6 +999,7 @@ public class AdminDashboard {
                         }
                     });
                 });
+
                 Label idLabel = new Label(
                         "Student ID: " + student.get("student_id")
                 );
@@ -1020,6 +1054,7 @@ public class AdminDashboard {
 
         displayStudents.run();
     }
+
     private void showApplications() {
 
         content.getChildren().clear();
@@ -1036,7 +1071,8 @@ public class AdminDashboard {
 
         VBox applicationList = new VBox(12);
 
-        List<Map<String, Object>> allApplications = new java.util.ArrayList<>();
+        List<Map<String, Object>> allApplications =
+                new java.util.ArrayList<>();
 
         try (Connection connection = DatabaseConfig.getConnection()) {
 
@@ -1062,9 +1098,14 @@ public class AdminDashboard {
 
             for (Map<String, Object> application : allApplications) {
 
-                String studentName = String.valueOf(application.get("student_name"));
-                String email = String.valueOf(application.get("email"));
-                String company = String.valueOf(application.get("company_name"));
+                String studentName =
+                        String.valueOf(application.get("student_name"));
+
+                String email =
+                        String.valueOf(application.get("email"));
+
+                String company =
+                        String.valueOf(application.get("company_name"));
 
                 if (!studentName.toLowerCase(Locale.ROOT).contains(search)
                         && !email.toLowerCase(Locale.ROOT).contains(search)
@@ -1162,5 +1203,152 @@ public class AdminDashboard {
 
         displayApplications.run();
     }
-}
 
+    private void showManageOffers() {
+
+        content.getChildren().clear();
+
+        Label heading = createHeading("Manage Offers");
+
+        Label description = new Label(
+                "View all placement offers issued by companies to students."
+        );
+
+        TextField searchField = new TextField();
+        searchField.setPromptText(
+                "Search by student, email, company or role..."
+        );
+        searchField.setMaxWidth(450);
+
+        VBox offerList = new VBox(12);
+
+        List<Map<String, Object>> allOffers =
+                new java.util.ArrayList<>();
+
+        try (Connection connection = DatabaseConfig.getConnection()) {
+
+            ApplicationDAO dao = new ApplicationDAO();
+            allOffers.addAll(dao.getAllOffers(connection));
+
+        } catch (Exception e) {
+
+            offerList.getChildren().add(
+                    new Label("Error loading offers: " + e.getMessage())
+            );
+        }
+
+        Runnable displayOffers = () -> {
+
+            offerList.getChildren().clear();
+
+            String search = searchField.getText()
+                    .trim()
+                    .toLowerCase(Locale.ROOT);
+
+            int count = 0;
+
+            for (Map<String, Object> offer : allOffers) {
+
+                String student =
+                        String.valueOf(offer.get("student_name"));
+
+                String email =
+                        String.valueOf(offer.get("email"));
+
+                String company =
+                        String.valueOf(offer.get("company_name"));
+
+                String role =
+                        String.valueOf(offer.get("role"));
+
+                boolean matches =
+                        student.toLowerCase(Locale.ROOT).contains(search)
+                                || email.toLowerCase(Locale.ROOT).contains(search)
+                                || company.toLowerCase(Locale.ROOT).contains(search)
+                                || role.toLowerCase(Locale.ROOT).contains(search);
+
+                if (!matches) {
+                    continue;
+                }
+
+                count++;
+
+                Label studentLabel = new Label("Student: " + student);
+                studentLabel.setStyle(
+                        "-fx-font-size: 17px; -fx-font-weight: bold;"
+                );
+
+                Label offerIdLabel = new Label(
+                        "Offer ID: " + offer.get("offer_id")
+                );
+
+                Label applicationLabel = new Label(
+                        "Application ID: " + offer.get("application_id")
+                );
+
+                Label emailLabel = new Label("Email: " + email);
+                Label companyLabel = new Label("Company: " + company);
+                Label roleLabel = new Label("Role: " + role);
+
+                Label joiningDateLabel = new Label(
+                        "Joining Date: " + offer.get("joining_date")
+                );
+
+                Label statusLabel = new Label(
+                        "Offer Status: " + offer.get("status")
+                );
+
+                statusLabel.setStyle(
+                        "-fx-font-weight: bold; -fx-text-fill: #4F46E5;"
+                );
+
+                VBox card = new VBox(
+                        7,
+                        studentLabel,
+                        offerIdLabel,
+                        applicationLabel,
+                        emailLabel,
+                        companyLabel,
+                        roleLabel,
+                        joiningDateLabel,
+                        statusLabel
+                );
+
+                card.setPadding(new Insets(18));
+                card.setStyle(
+                        "-fx-background-color: white;" +
+                                "-fx-background-radius: 10px;" +
+                                "-fx-border-color: #E2E8F0;" +
+                                "-fx-border-radius: 10px;"
+                );
+
+                offerList.getChildren().add(card);
+            }
+
+            if (count == 0) {
+                offerList.getChildren().add(
+                        new Label("No matching offers found.")
+                );
+            }
+        };
+
+        searchField.textProperty().addListener(
+                (observable, oldValue, newValue) ->
+                        displayOffers.run()
+        );
+
+        ScrollPane scrollPane = new ScrollPane(offerList);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefHeight(450);
+        scrollPane.setStyle("-fx-background: #F8FAFC;");
+
+        content.getChildren().addAll(
+                heading,
+                description,
+                searchField,
+                scrollPane
+        );
+
+        displayOffers.run();
+    }
+}

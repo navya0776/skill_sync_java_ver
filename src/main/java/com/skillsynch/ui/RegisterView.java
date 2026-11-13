@@ -129,7 +129,8 @@ public class RegisterView {
             }
 
             if (!enteredEmail.matches(
-                    "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+                    "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
+                    || enteredEmail.contains("..")) {
 
                 showAlert(
                         Alert.AlertType.WARNING,
@@ -137,6 +138,7 @@ public class RegisterView {
                 );
                 return;
             }
+
 
             if (enteredPassword.length() < 8) {
                 showAlert(
@@ -183,10 +185,10 @@ public class RegisterView {
                         return;
                     }
 
-                    if (academicYear < 1 || academicYear > 6) {
+                    if (academicYear < 1 || academicYear > 4) {
                         showAlert(
                                 Alert.AlertType.WARNING,
-                                "Academic year must be between 1 and 6."
+                                "Academic year must be between 1 and 4."
                         );
                         return;
                     }
@@ -208,7 +210,24 @@ public class RegisterView {
                             studentCgpa
                     );
 
+
                 } else {
+
+                    if (industry.getText().trim().isBlank()) {
+                        showAlert(
+                                Alert.AlertType.WARNING,
+                                "Please enter the company industry."
+                        );
+                        return;
+                    }
+
+                    if (description.getText().trim().isBlank()) {
+                        showAlert(
+                                Alert.AlertType.WARNING,
+                                "Please enter the company description."
+                        );
+                        return;
+                    }
 
                     registrationService.registerCompany(
                             enteredName,
@@ -218,6 +237,7 @@ public class RegisterView {
                             description.getText().trim()
                     );
                 }
+
 
                 showAlert(
                         Alert.AlertType.INFORMATION,

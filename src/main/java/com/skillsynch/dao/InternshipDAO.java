@@ -4,10 +4,10 @@ import com.skillsynch.model.Internship;
 import com.skillsynch.model.InternshipStatus;
 
 import java.sql.Connection;
-import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,13 +20,13 @@ public class InternshipDAO {
             String companyName,
             String role,
             String description,
-            double minCgpa,
+            Double minCgpa,
             int numberOfPositions,
-            Date applicationDeadline
+            LocalDate applicationDeadline
     ) throws Exception {
 
         String sql = """
-                INSERT INTO Internships
+                INSERT INTO internships
                 (company_id, company_name, role, description,
                  min_cgpa, number_of_positions,
                  application_deadline, status)
@@ -41,9 +41,9 @@ public class InternshipDAO {
             statement.setString(2, companyName);
             statement.setString(3, role);
             statement.setString(4, description);
-            statement.setDouble(5, minCgpa);
+            DaoUtil.setNullableDouble(statement, 5, minCgpa);
             statement.setInt(6, numberOfPositions);
-            statement.setDate(7, applicationDeadline);
+            statement.setDate(7, DaoUtil.toSqlDate(applicationDeadline));
             statement.setString(8, InternshipStatus.PENDING.getLabel());
 
             statement.executeUpdate();
@@ -69,7 +69,7 @@ public class InternshipDAO {
         }
 
         String sql = """
-            UPDATE Internships
+            UPDATE internships
             SET status = ?
             WHERE intern_id = ?
             """;
@@ -88,26 +88,17 @@ public class InternshipDAO {
         }
     }
 
-<<<<<<< HEAD
     public List<Internship> getAllInternships(
-=======
-
-    public List<Map<String, Object>> getAllInternships(
->>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
             Connection connection
     ) throws Exception {
 
         String sql = """
-        SELECT i.intern_id, i.company_id,
-               c.company_name AS company_name,
-               i.role, i.description, i.min_cgpa,
-               i.number_of_positions,
-               i.application_deadline, i.status
-        FROM Internships i
-        LEFT JOIN Companies c
-            ON i.company_id = c.company_id
-        ORDER BY i.intern_id DESC
-        """;
+            SELECT intern_id, company_id, company_name, role,
+                   description, min_cgpa, number_of_positions,
+                   application_deadline, status
+            FROM internships
+            ORDER BY intern_id DESC
+            """;
 
         List<Internship> internships = new ArrayList<>();
 
@@ -137,7 +128,7 @@ public class InternshipDAO {
         }
 
         String sql = """
-            INSERT INTO Internship_Skills
+            INSERT INTO internship_skills
             (intern_id, skill_id, min_level)
             VALUES (?, ?, ?)
             """;
@@ -160,7 +151,7 @@ public class InternshipDAO {
     ) throws Exception {
 
         String sql = """
-            INSERT INTO Internship_Skills
+            INSERT INTO internship_skills
             (intern_id, skill_id, min_level)
             VALUES (?, ?, ?)
             """;
@@ -189,42 +180,23 @@ public class InternshipDAO {
         }
     }
 
-<<<<<<< HEAD
     public List<Internship> getCompanyInternships(
-=======
-    public List<Map<String, Object>> getCompanyInternships(
->>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
             Connection connection,
             int companyId
     ) throws Exception {
 
         String sql = """
-<<<<<<< HEAD
             SELECT intern_id, company_id, company_name, role,
                    description, min_cgpa, number_of_positions,
                    application_deadline, status
-            FROM Internships
+            FROM internships
             WHERE company_id = ?
             ORDER BY intern_id DESC
             """;
-=======
-        SELECT i.intern_id, i.company_id,
-               c.company_name AS company_name,
-               i.role, i.description, i.min_cgpa,
-               i.number_of_positions,
-               i.application_deadline, i.status
-        FROM Internships i
-        LEFT JOIN Companies c
-            ON i.company_id = c.company_id
-        WHERE i.company_id = ?
-        ORDER BY i.intern_id DESC
-        """;
->>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
 
         List<Internship> internships = new ArrayList<>();
 
-        try (PreparedStatement statement =
-                     connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setInt(1, companyId);
 
@@ -239,23 +211,19 @@ public class InternshipDAO {
         return internships;
     }
 
-<<<<<<< HEAD
     // Turns the current ResultSet row into an Internship
     private Internship mapInternship(ResultSet rs) throws SQLException {
 
         return new Internship(
                 rs.getInt("intern_id"),
-                DaoUtil.getNullableInt(rs, "company_id"),
+                rs.getInt("company_id"),
                 rs.getString("company_name"),
                 rs.getString("role"),
                 rs.getString("description"),
                 DaoUtil.getNullableDouble(rs, "min_cgpa"),
-                DaoUtil.getNullableInt(rs, "number_of_positions"),
+                rs.getInt("number_of_positions"),
                 DaoUtil.toLocalDate(rs.getDate("application_deadline")),
                 InternshipStatus.fromLabel(rs.getString("status"))
         );
     }
 }
-=======
-}
->>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988

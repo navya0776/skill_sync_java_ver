@@ -1,5 +1,13 @@
 package com.skillsynch.ui;
 
+import com.skillsynch.model.Application;
+import com.skillsynch.model.Eligibility;
+import com.skillsynch.model.Internship;
+import com.skillsynch.model.Offer;
+import com.skillsynch.model.OfferStatus;
+import com.skillsynch.model.Skill;
+import com.skillsynch.model.Student;
+import com.skillsynch.model.StudentSkill;
 import com.skillsynch.service.StudentService;
 
 import javafx.collections.FXCollections;
@@ -272,25 +280,25 @@ public class StudentDashboard {
 
         try {
 
-            Map<String, Object> student = service.getStudentProfile(studentId);
+            Student student = service.getStudentProfile(studentId);
 
-            if (student == null || student.isEmpty()) {
+            if (student == null) {
                 content.getChildren().add(
                         new Label("Student profile not found.")
                 );
                 return;
             }
 
-            TextField nameField = new TextField(String.valueOf(student.get("name")));
-            TextField emailField = new TextField(String.valueOf(student.get("email")));
-            TextField branchField = new TextField(String.valueOf(student.get("branch")));
-            TextField yearField = new TextField(String.valueOf(student.get("year")));
-            TextField cgpaField = new TextField(String.valueOf(student.get("cgpa")));
+            TextField nameField = new TextField(student.getName() == null ? "" : student.getName());
+            TextField emailField = new TextField(student.getEmail() == null ? "" : student.getEmail());
+            TextField branchField = new TextField(student.getBranch() == null ? "" : student.getBranch());
+            TextField yearField = new TextField(student.getYear() == null ? "" : String.valueOf(student.getYear()));
+            TextField cgpaField = new TextField(student.getCgpa() == null ? "" : String.valueOf(student.getCgpa()));
 
-            Object resumeValue = student.get("resume_url");
+            String resumeValue = student.getResumeUrl();
 
             TextField resumeField = new TextField(
-                    resumeValue == null ? "" : String.valueOf(resumeValue)
+                    resumeValue == null ? "" : resumeValue
             );
 
             final File[] selectedResume = {null};
@@ -457,7 +465,7 @@ public class StudentDashboard {
     }
 
 
-    private File findResumeFile(File selected, Object storedValue, Label messageLabel) {
+    private File findResumeFile(File selected, String storedValue, Label messageLabel) {
 
         String resumePath = service.resolveResumePath(selected, storedValue);
 
@@ -499,7 +507,7 @@ public class StudentDashboard {
         // AVAILABLE SKILLS
         Label availableLabel = new Label("Select a Skill");
 
-        ComboBox<String> availableSkills = new ComboBox<>();
+        ComboBox<Skill> availableSkills = new ComboBox<>();
         availableSkills.setPromptText("Choose a skill");
         availableSkills.setPrefWidth(250);
 
@@ -516,65 +524,53 @@ public class StudentDashboard {
         // STUDENT'S SAVED SKILLS
         Label savedLabel = new Label("My Saved Skills");
 
-        ListView<String> savedSkillsList = new ListView<>();
+        ListView<StudentSkill> savedSkillsList = new ListView<>();
         savedSkillsList.setPrefHeight(220);
         savedSkillsList.setPlaceholder(
                 new Label("You haven't added any skills yet.")
         );
-
-        // MAPS TO CONNECT SKILL NAMES WITH DATABASE IDS
-        Map<String, Integer> availableSkillIds = new HashMap<>();
-        Map<String, Integer> savedSkillIds = new HashMap<>();
+        savedSkillsList.setCellFactory(listView -> new ListCell<>() {
+            @Override
+            protected void updateItem(StudentSkill item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    String category = item.getCategory() == null ? "Uncategorized" : item.getCategory();
+                    setText(item.getSkillName() + " | " + category
+                            + " | Proficiency: " + item.getProficiencyLevel() + "/5");
+                }
+            }
+        });
 
         // LOAD SKILLS
         try {
 
-            List<Map<String, Object>> allSkills = service.getAllSkills();
-            List<Map<String, Object>> mySkills = service.getStudentSkills(studentId);
+            List<Skill> allSkills = service.getAllSkills();
+            List<StudentSkill> mySkills = service.getStudentSkills(studentId);
 
             Set<Integer> alreadyAddedIds = new HashSet<>();
 
-            List<String> savedSkillNames = new ArrayList<>();
-
             // Display student's existing skills
-            for (Map<String, Object> skill : mySkills) {
-
-                int id = (Integer) skill.get("skill_id");
-                String name = (String) skill.get("skill_name");
-                String category = (String) skill.get("category");
-                int level = (Integer) skill.get("proficiency_level");
-
-                alreadyAddedIds.add(id);
-
-                String displayName =
-                        name + " | " +
-                                (category == null ? "Uncategorized" : category) +
-                                " | Proficiency: " + level + "/5";
-
-                savedSkillNames.add(displayName);
-                savedSkillIds.put(displayName, id);
+            for (StudentSkill skill : mySkills) {
+                alreadyAddedIds.add(skill.getSkillId());
             }
 
             savedSkillsList.setItems(
-                    FXCollections.observableArrayList(savedSkillNames)
+                    FXCollections.observableArrayList(mySkills)
             );
 
             // Show only skills not already added
-            List<String> availableNames = new ArrayList<>();
+            List<Skill> availableSkillList = new ArrayList<>();
 
-            for (Map<String, Object> skill : allSkills) {
-
-                int id = (Integer) skill.get("skill_id");
-                String name = (String) skill.get("skill_name");
-
-                if (!alreadyAddedIds.contains(id)) {
-                    availableNames.add(name);
-                    availableSkillIds.put(name, id);
+            for (Skill skill : allSkills) {
+                if (!alreadyAddedIds.contains(skill.getSkillId())) {
+                    availableSkillList.add(skill);
                 }
             }
 
             availableSkills.setItems(
-                    FXCollections.observableArrayList(availableNames)
+                    FXCollections.observableArrayList(availableSkillList)
             );
 
         } catch (Exception ex) {
@@ -601,7 +597,7 @@ public class StudentDashboard {
 
         addButton.setOnAction(e -> {
 
-            String selectedSkill = availableSkills.getValue();
+            Skill selectedSkill = availableSkills.getValue();
             Integer selectedLevel = proficiencyBox.getValue();
 
             if (selectedSkill == null || selectedLevel == null) {
@@ -616,9 +612,7 @@ public class StudentDashboard {
 
             try {
 
-                int skillId = availableSkillIds.get(selectedSkill);
-
-                service.addStudentSkill(studentId, skillId, selectedLevel);
+                service.addStudentSkill(studentId, selectedSkill.getSkillId(), selectedLevel);
 
                 new Alert(
                         Alert.AlertType.INFORMATION,
@@ -651,7 +645,7 @@ public class StudentDashboard {
 
         removeButton.setOnAction(e -> {
 
-            String selectedSkill = savedSkillsList.getSelectionModel().getSelectedItem();
+            StudentSkill selectedSkill = savedSkillsList.getSelectionModel().getSelectedItem();
 
             if (selectedSkill == null) {
 
@@ -665,9 +659,7 @@ public class StudentDashboard {
 
             try {
 
-                int skillId = savedSkillIds.get(selectedSkill);
-
-                service.removeStudentSkill(studentId, skillId);
+                service.removeStudentSkill(studentId, selectedSkill.getSkillId());
 
                 new Alert(
                         Alert.AlertType.INFORMATION,
@@ -786,17 +778,17 @@ public class StudentDashboard {
         try {
 
             // Service already returns only Approved / Published internships
-            List<Map<String, Object>> internships = service.getAvailableInternships();
+            List<Internship> internships = service.getAvailableInternships();
 
-            for (Map<String, Object> internship : internships) {
+            for (Internship internship : internships) {
 
                 Label details = new Label(
-                        "Company: " + internship.get("company_name") +
-                                "\nRole: " + internship.get("role") +
-                                "\nDescription: " + internship.get("description") +
-                                "\nMinimum CGPA: " + internship.get("min_cgpa") +
-                                "\nPositions: " + internship.get("number_of_positions") +
-                                "\nDeadline: " + internship.get("application_deadline")
+                        "Company: " + internship.getCompanyName() +
+                                "\nRole: " + internship.getRole() +
+                                "\nDescription: " + (internship.getDescription() == null ? "No description" : internship.getDescription()) +
+                                "\nMinimum CGPA: " + (internship.getMinCgpa() == null ? "Not specified" : internship.getMinCgpa()) +
+                                "\nPositions: " + internship.getNumberOfPositions() +
+                                "\nDeadline: " + (internship.getApplicationDeadline() == null ? "Not specified" : internship.getApplicationDeadline())
                 );
 
                 details.setStyle(
@@ -806,9 +798,7 @@ public class StudentDashboard {
                                 "-fx-border-color: #cccccc;"
                 );
 
-                int internId = Integer.parseInt(
-                        String.valueOf(internship.get("intern_id"))
-                );
+                int internId = internship.getInternId();
 
                 Button applyButton = new Button("Apply Now");
 
@@ -881,16 +871,16 @@ public class StudentDashboard {
 
         try {
 
-            List<Map<String, Object>> applications =
+            List<Application> applications =
                     service.getStudentApplications(studentId);
 
-            for (Map<String, Object> application : applications) {
+            for (Application application : applications) {
 
                 Label details = new Label(
-                        "Company: " + application.get("company_name") +
-                                "\nRole: " + application.get("role") +
-                                "\nApplication Date: " + application.get("application_date") +
-                                "\nStatus: " + application.get("status")
+                        "Company: " + application.getCompanyName() +
+                                "\nRole: " + application.getRole() +
+                                "\nApplication Date: " + application.getApplicationDate() +
+                                "\nStatus: " + application.getStatus()
                 );
 
                 details.setStyle(
@@ -933,16 +923,16 @@ public class StudentDashboard {
 
         try {
 
-            List<Map<String, Object>> results =
+            List<Eligibility> results =
                     service.evaluateAndGetEligibility(studentId);
 
-            for (Map<String, Object> result : results) {
+            for (Eligibility result : results) {
 
                 Label details = new Label(
-                        "Company: " + result.get("company_name") +
-                                "\nRole: " + result.get("role") +
-                                "\nSkill Match: " + result.get("match_percentage") + "%" +
-                                "\nEligibility: " + result.get("eligibility_status")
+                        "Company: " + result.getCompanyName() +
+                                "\nRole: " + result.getRole() +
+                                "\nSkill Match: " + result.getMatchPercentage() + "%" +
+                                "\nEligibility: " + result.getEligibilityStatus()
                 );
 
                 details.setStyle(
@@ -984,7 +974,7 @@ public class StudentDashboard {
 
         try {
 
-            List<Map<String, Object>> offers = service.getStudentOffers(studentId);
+            List<Offer> offers = service.getStudentOffers(studentId);
 
             if (offers.isEmpty()) {
 
@@ -994,24 +984,24 @@ public class StudentDashboard {
 
             } else {
 
-                for (Map<String, Object> offer : offers) {
+                for (Offer offer : offers) {
 
-                    int offerId = ((Number) offer.get("offer_id")).intValue();
+                    int offerId = offer.getOfferId();
 
-                    String status = String.valueOf(offer.get("status"));
+                    OfferStatus status = offer.getStatus();
 
-                    Label companyLabel = new Label("Company: " + offer.get("company_name"));
-                    Label roleLabel = new Label("Role: " + offer.get("role"));
-                    Label joiningLabel = new Label("Joining Date: " + offer.get("joining_date"));
+                    Label companyLabel = new Label("Company: " + offer.getCompanyName());
+                    Label roleLabel = new Label("Role: " + offer.getRole());
+                    Label joiningLabel = new Label("Joining Date: " + (offer.getJoiningDate() == null ? "Not specified" : offer.getJoiningDate()));
                     Label statusLabel = new Label("Offer Status: " + status);
 
                     Button acceptButton = new Button("Accept Offer");
                     Button rejectButton = new Button("Reject Offer");
 
-                    if ("Pending".equals(status)) {
+                    if (status == OfferStatus.PENDING) {
 
-                        acceptButton.setOnAction(e -> respondToOffer(offerId, "Accepted"));
-                        rejectButton.setOnAction(e -> respondToOffer(offerId, "Rejected"));
+                        acceptButton.setOnAction(e -> respondToOffer(offerId, OfferStatus.ACCEPTED));
+                        rejectButton.setOnAction(e -> respondToOffer(offerId, OfferStatus.REJECTED));
 
                     } else {
 
@@ -1057,14 +1047,16 @@ public class StudentDashboard {
         content.getChildren().addAll(heading, scrollPane);
     }
 
-    private void respondToOffer(int offerId, String status) {
+    private void respondToOffer(int offerId, OfferStatus status) {
+
+        String actionLabel = status.getLabel().toLowerCase(Locale.ROOT);
 
         Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
 
         confirmation.setTitle("Offer Confirmation");
         confirmation.setHeaderText("Confirm your decision");
         confirmation.setContentText(
-                "Are you sure you want to " + status.toLowerCase() + " this offer?"
+                "Are you sure you want to " + actionLabel + " this offer?"
         );
 
         confirmation.showAndWait().ifPresent(response -> {
@@ -1078,7 +1070,7 @@ public class StudentDashboard {
                     Alert success = new Alert(Alert.AlertType.INFORMATION);
                     success.setTitle("Success");
                     success.setHeaderText(null);
-                    success.setContentText("Offer " + status.toLowerCase() + " successfully!");
+                    success.setContentText("Offer " + actionLabel + " successfully!");
                     success.showAndWait();
 
                     showMyOffers();

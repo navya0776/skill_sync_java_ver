@@ -5,9 +5,14 @@ import com.skillsynch.dao.ApplicationDAO;
 import com.skillsynch.dao.CompanyDAO;
 import com.skillsynch.dao.InternshipDAO;
 import com.skillsynch.dao.SkillDAO;
+import com.skillsynch.model.Application;
+import com.skillsynch.model.ApplicationStatus;
+import com.skillsynch.model.Company;
+import com.skillsynch.model.Internship;
+import com.skillsynch.model.Offer;
+import com.skillsynch.model.Skill;
 
 import java.sql.Connection;
-import java.sql.Date;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +40,7 @@ public class CompanyService {
     // SKILLS
     // =========================================================
 
-    public List<Map<String, Object>> getAllSkills() throws Exception {
+    public List<Skill> getAllSkills() throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return skillDAO.getAllSkills(connection);
         }
@@ -96,16 +101,20 @@ public class CompanyService {
             connection.setAutoCommit(false);
 
             try {
+                Company company = companyDAO.getCompanyById(connection, companyId);
+                if (company == null) {
+                    throw new ValidationException("Company profile not found.");
+                }
 
                 int internshipId = internshipDAO.createInternship(
                         connection,
                         companyId,
-                        "Company " + companyId,
+                        company.getCompanyName(),
                         role.trim(),
                         description.trim(),
                         cgpa,
                         positions,
-                        Date.valueOf(deadline)
+                        deadline
                 );
 
                 internshipDAO.addRequiredSkills(connection, internshipId, requiredSkills);
@@ -121,7 +130,7 @@ public class CompanyService {
         }
     }
 
-    public List<Map<String, Object>> getCompanyInternships(int companyId) throws Exception {
+    public List<Internship> getCompanyInternships(int companyId) throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return internshipDAO.getCompanyInternships(connection, companyId);
         }
@@ -131,17 +140,29 @@ public class CompanyService {
     // APPLICATIONS
     // =========================================================
 
-    public List<Map<String, Object>> getCompanyApplications(int companyId) throws Exception {
+    public List<Application> getCompanyApplications(int companyId) throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return applicationDAO.getCompanyApplications(connection, companyId);
         }
     }
 
-    public void updateApplicationStatus(int applicationId, int companyId, String newStatus)
-            throws ValidationException, Exception {
+    public void updateApplicationStatus(
+            int applicationId,
+            int companyId,
+            ApplicationStatus newStatus
+    ) throws ValidationException, Exception {
 
         if (newStatus == null) {
             throw new ValidationException("Please select a status.");
+        }
+
+        if (!List.of(
+                ApplicationStatus.SHORTLISTED,
+                ApplicationStatus.INTERVIEW,
+                ApplicationStatus.SELECTED,
+                ApplicationStatus.REJECTED
+        ).contains(newStatus)) {
+            throw new ValidationException("Invalid application status: " + newStatus);
         }
 
         try (Connection connection = DatabaseConfig.getConnection()) {
@@ -149,19 +170,36 @@ public class CompanyService {
         }
     }
 
-    public List<Map<String, Object>> getShortlistedStudents(int companyId) throws Exception {
+    public void updateApplicationStatus(int applicationId, int companyId, String newStatus)
+            throws ValidationException, Exception {
+
+        if (isBlank(newStatus)) {
+            throw new ValidationException("Please select a status.");
+        }
+
+        ApplicationStatus status;
+        try {
+            status = ApplicationStatus.fromLabel(newStatus.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new ValidationException("Invalid application status: " + newStatus);
+        }
+
+        updateApplicationStatus(applicationId, companyId, status);
+    }
+
+    public List<Application> getShortlistedStudents(int companyId) throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return applicationDAO.getShortlistedStudents(connection, companyId);
         }
     }
 
     /** Applications whose status is "Selected", i.e. students who can receive an offer. */
-    public List<Map<String, Object>> getSelectedApplications(int companyId) throws Exception {
+    public List<Application> getSelectedApplications(int companyId) throws Exception {
 
-        List<Map<String, Object>> selected = new ArrayList<>();
+        List<Application> selected = new ArrayList<>();
 
-        for (Map<String, Object> application : getCompanyApplications(companyId)) {
-            if ("Selected".equals(application.get("status"))) {
+        for (Application application : getCompanyApplications(companyId)) {
+            if (application.getStatus() == ApplicationStatus.SELECTED) {
                 selected.add(application);
             }
         }
@@ -174,7 +212,7 @@ public class CompanyService {
     // =========================================================
 
     /** Returns the company's profile row, or null if it does not exist. */
-    public Map<String, Object> getCompany(int companyId) throws Exception {
+    public Company getCompany(int companyId) throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return companyDAO.getCompanyById(connection, companyId);
         }
@@ -197,7 +235,13 @@ public class CompanyService {
         }
 
         try (Connection connection = DatabaseConfig.getConnection()) {
-            return companyDAO.updateCompany(connection, companyId, name, industry, description);
+            return companyDAO.updateCompany(
+                    connection,
+                    companyId,
+                    name,
+                    industry,
+                    description.isEmpty() ? null : description
+            );
         }
     }
 
@@ -218,16 +262,25 @@ public class CompanyService {
         }
 
         try (Connection connection = DatabaseConfig.getConnection()) {
-            return applicationDAO.createOffer(
-                    connection,
-                    applicationId,
-                    companyId,
-                    Date.valueOf(joiningDate)
-            );
+            connection.setAutoCommit(false);
+
+            try {
+                boolean created = applicationDAO.createOffer(
+                        connection,
+                        applicationId,
+                        companyId,
+                        joiningDate
+                );
+                connection.commit();
+                return created;
+            } catch (Exception ex) {
+                connection.rollback();
+                throw ex;
+            }
         }
     }
 
-    public List<Map<String, Object>> getCompanyOffers(int companyId) throws Exception {
+    public List<Offer> getCompanyOffers(int companyId) throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return applicationDAO.getCompanyOffers(connection, companyId);
         }

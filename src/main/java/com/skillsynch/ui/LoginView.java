@@ -6,8 +6,10 @@ import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.util.StringConverter;
 import com.skillsynch.service.AuthService;
 import com.skillsynch.model.User;
+import com.skillsynch.model.UserRole;
 import java.util.function.Consumer;
 public class LoginView {
 
@@ -31,9 +33,25 @@ public class LoginView {
         titleBox.setAlignment(Pos.CENTER_LEFT);
 
         Label roleLabel = new Label("Sign in as");
-        ComboBox<String> role = new ComboBox<>();
-        role.getItems().addAll("Student", "Company", "College Admin");
-        role.setValue("Student");
+        ComboBox<UserRole> role = new ComboBox<>();
+        role.getItems().addAll(UserRole.STUDENT, UserRole.COMPANY, UserRole.ADMIN);
+        role.setValue(UserRole.STUDENT);
+        role.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(UserRole userRole) {
+                if (userRole == null) return "";
+                return switch (userRole) {
+                    case STUDENT -> "Student";
+                    case COMPANY -> "Company";
+                    case ADMIN -> "College Admin";
+                };
+            }
+
+            @Override
+            public UserRole fromString(String string) {
+                return null;
+            }
+        });
         role.setMaxWidth(Double.MAX_VALUE);
         role.getStyleClass().add("input-field");
 
@@ -58,10 +76,7 @@ public class LoginView {
 
             String enteredEmail = email.getText().trim();
             String enteredPassword = password.getText();
-
-            String selectedRole = role.getValue().equals("College Admin")
-                    ? "admin"
-                    : role.getValue().toLowerCase();
+            UserRole selectedRole = role.getValue();
 
             if (enteredEmail.isBlank() || enteredPassword.isBlank()) {
                 new Alert(

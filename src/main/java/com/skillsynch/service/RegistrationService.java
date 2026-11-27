@@ -2,17 +2,19 @@
 package com.skillsynch.service;
 
 import com.skillsynch.config.DatabaseConfig;
-import com.skillsynch.dao.StudentDAO;
 import com.skillsynch.dao.CompanyDAO;
+import com.skillsynch.dao.StudentDAO;
+import com.skillsynch.dao.UserDAO;
+import com.skillsynch.model.UserRole;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 
 public class RegistrationService {
 
     private final StudentDAO studentDAO = new StudentDAO();
     private final CompanyDAO companyDAO = new CompanyDAO();
+    private final UserDAO userDAO = new UserDAO();
 
     // STUDENT REGISTRATION
     public void registerStudent(
@@ -35,17 +37,12 @@ public class RegistrationService {
             );
         }
 
-<<<<<<< HEAD
-=======
-        // Validate academic year (1 to 4)
->>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
         if (year < 1 || year > 4) {
             throw new IllegalArgumentException(
                     "Academic year must be between 1 and 4."
             );
         }
 
-        // Validate CGPA
         if (cgpa < 0 || cgpa > 10) {
             throw new IllegalArgumentException(
                     "CGPA must be between 0 and 10."
@@ -74,22 +71,15 @@ public class RegistrationService {
                         email.trim()
                 );
 
-                // Create student login account
-                String sql = """
-                        INSERT INTO Users
-                        (username, password_hash, role, student_id)
-                        VALUES (?, ?, 'student', ?)
-                        """;
-
-                try (PreparedStatement statement =
-                             connection.prepareStatement(sql)) {
-
-                    statement.setString(1, email.trim());
-                    statement.setString(2, passwordHash);
-                    statement.setInt(3, studentId);
-
-                    statement.executeUpdate();
-                }
+                // Create login account
+                userDAO.createUser(
+                        connection,
+                        email.trim(),
+                        passwordHash,
+                        UserRole.STUDENT,
+                        studentId,
+                        null
+                );
 
                 connection.commit();
 
@@ -120,25 +110,16 @@ public class RegistrationService {
             );
         }
 
-        // Validate industry
-        if (industry == null || industry.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Please enter the company industry."
-            );
-        }
-
-        // Validate description
-        if (description == null || description.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Please enter the company description."
-            );
-        }
-
         // Hash password
         String passwordHash = BCrypt.hashpw(
                 password,
                 BCrypt.gensalt(12)
         );
+
+        String normalizedIndustry = (industry == null || industry.isBlank())
+                ? null : industry.trim();
+        String normalizedDescription = (description == null || description.isBlank())
+                ? null : description.trim();
 
         try (Connection connection = DatabaseConfig.getConnection()) {
 
@@ -150,26 +131,19 @@ public class RegistrationService {
                 int companyId = companyDAO.createCompany(
                         connection,
                         companyName.trim(),
-                        industry.trim(),
-                        description.trim()
+                        normalizedIndustry,
+                        normalizedDescription
                 );
 
-                // Create company login account
-                String sql = """
-                        INSERT INTO Users
-                        (username, password_hash, role, company_id)
-                        VALUES (?, ?, 'company', ?)
-                        """;
-
-                try (PreparedStatement statement =
-                             connection.prepareStatement(sql)) {
-
-                    statement.setString(1, email.trim());
-                    statement.setString(2, passwordHash);
-                    statement.setInt(3, companyId);
-
-                    statement.executeUpdate();
-                }
+                // Create login account
+                userDAO.createUser(
+                        connection,
+                        email.trim(),
+                        passwordHash,
+                        UserRole.COMPANY,
+                        null,
+                        companyId
+                );
 
                 connection.commit();
 

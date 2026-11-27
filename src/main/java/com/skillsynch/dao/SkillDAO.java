@@ -18,7 +18,7 @@ public class SkillDAO {
 
         String sql = """
                 SELECT skill_id, skill_name, category
-                FROM Skills
+                FROM skills
                 ORDER BY skill_name
                 """;
 
@@ -55,8 +55,8 @@ public class SkillDAO {
                        s.skill_name,
                        s.category,
                        ss.proficiency_level
-                FROM Student_Skills ss
-                JOIN Skills s
+                FROM student_skills ss
+                JOIN skills s
                 ON ss.skill_id = s.skill_id
                 WHERE ss.student_id = ?
                 ORDER BY s.skill_name
@@ -105,7 +105,7 @@ public class SkillDAO {
         }
 
         String sql = """
-                INSERT INTO Student_Skills
+                INSERT INTO student_skills
                 (student_id, skill_id, proficiency_level)
                 VALUES (?, ?, ?)
                 """;
@@ -124,7 +124,7 @@ public class SkillDAO {
     public void addSkill(Connection conn, String skillName, String category)
             throws Exception {
 
-        String sql = "INSERT INTO Skills (skill_name, category) VALUES (?, ?)";
+        String sql = "INSERT INTO skills (skill_name, category) VALUES (?, ?)";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, skillName);
@@ -141,7 +141,7 @@ public class SkillDAO {
     ) throws Exception {
 
         String sql = """
-                DELETE FROM Student_Skills
+                DELETE FROM student_skills
                 WHERE student_id = ?
                 AND skill_id = ?
                 """;

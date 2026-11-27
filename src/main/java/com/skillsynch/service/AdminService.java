@@ -6,17 +6,18 @@ import com.skillsynch.dao.CompanyDAO;
 import com.skillsynch.dao.InternshipDAO;
 import com.skillsynch.dao.SkillDAO;
 import com.skillsynch.dao.StudentDAO;
+import com.skillsynch.model.Application;
+import com.skillsynch.model.ApplicationStats;
+import com.skillsynch.model.Company;
 import com.skillsynch.model.Internship;
-
 import com.skillsynch.model.InternshipStatus;
+import com.skillsynch.model.Student;
 
 import java.sql.Connection;
-import java.sql.Date;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 /**
  * Business / data-access logic for the admin side of SkillSynch.
@@ -49,10 +50,12 @@ public class AdminService {
 
     public void updateInternshipStatus(
             int internshipId,
-            String newStatus
+            InternshipStatus status
     ) throws Exception {
 
-        InternshipStatus status = InternshipStatus.fromLabel(newStatus);
+        if (status == null || status == InternshipStatus.PENDING) {
+            throw new ValidationException("Invalid internship status.");
+        }
 
         try (Connection connection = DatabaseConfig.getConnection()) {
             internshipDAO.updateInternshipStatus(
@@ -61,15 +64,32 @@ public class AdminService {
                     status
             );
         }
-    }    }
+    }
+
+    public void updateInternshipStatus(
+            int internshipId,
+            String newStatus
+    ) throws Exception {
+
+        if (newStatus == null || newStatus.isBlank()) {
+            throw new ValidationException("Please select a valid internship status.");
+        }
+
+        InternshipStatus status;
+        try {
+            status = InternshipStatus.fromLabel(newStatus.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new ValidationException("Invalid internship status: " + newStatus);
+        }
+
+        updateInternshipStatus(internshipId, status);
+    }
 
     /**
      * Creates an internship on behalf of a company (status starts as Pending).
-     *
-     * @param company the selected company row (needs company_id and company_name)
      */
     public void addInternship(
-            Map<String, Object> company,
+            Company company,
             String role,
             String description,
             String cgpaText,
@@ -105,19 +125,16 @@ public class AdminService {
             throw new ValidationException("Number of positions must be greater than 0.");
         }
 
-        int companyId = ((Number) company.get("company_id")).intValue();
-        String companyName = company.get("company_name").toString();
-
         try (Connection connection = DatabaseConfig.getConnection()) {
             internshipDAO.createInternship(
                     connection,
-                    companyId,
-                    companyName,
+                    company.getCompanyId(),
+                    company.getCompanyName(),
                     role,
                     description,
                     minCgpa,
                     positions,
-                    Date.valueOf(deadline)
+                    deadline
             );
         }
     }
@@ -126,10 +143,7 @@ public class AdminService {
     // REPORTS
     // =========================================================
 
-    /**
-     * Keys: total_applications, selected, shortlisted, rejected, offers_extended.
-     */
-    public Map<String, Integer> getApplicationStatistics() throws Exception {
+    public ApplicationStats getApplicationStatistics() throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return applicationDAO.getApplicationStatistics(connection);
         }
@@ -157,7 +171,7 @@ public class AdminService {
     // COMPANIES
     // =========================================================
 
-    public List<Map<String, Object>> getAllCompanies() throws Exception {
+    public List<Company> getAllCompanies() throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return companyDAO.getAllCompanies(connection);
         }
@@ -175,7 +189,12 @@ public class AdminService {
         }
 
         try (Connection connection = DatabaseConfig.getConnection()) {
-            companyDAO.createCompany(connection, name, industry, description);
+            companyDAO.createCompany(
+                    connection,
+                    name,
+                    industry,
+                    description.isEmpty() ? null : description
+            );
         }
     }
 
@@ -183,7 +202,7 @@ public class AdminService {
     // STUDENTS
     // =========================================================
 
-    public List<Map<String, Object>> getAllStudents() throws Exception {
+    public List<Student> getAllStudents() throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return studentDAO.getAllStudents(connection);
         }
@@ -196,21 +215,21 @@ public class AdminService {
     }
 
     /** Case-insensitive search on name (ignoring extra spaces) or email. */
-    public List<Map<String, Object>> filterStudents(
-            List<Map<String, Object>> students,
+    public List<Student> filterStudents(
+            List<Student> students,
             String search
     ) {
 
         String normalizedSearch = normalizeSpaces(search);
 
-        List<Map<String, Object>> result = new ArrayList<>();
+        List<Student> result = new ArrayList<>();
 
-        for (Map<String, Object> student : students) {
+        for (Student student : students) {
 
-            String name = normalizeSpaces(String.valueOf(student.get("name")));
-            String email = String.valueOf(student.get("email"))
-                    .trim()
-                    .toLowerCase(Locale.ROOT);
+            String name = normalizeSpaces(student.getName());
+            String email = student.getEmail() == null
+                    ? ""
+                    : student.getEmail().trim().toLowerCase(Locale.ROOT);
 
             if (name.contains(normalizedSearch) || email.contains(normalizedSearch)) {
                 result.add(student);
@@ -224,27 +243,27 @@ public class AdminService {
     // APPLICATIONS
     // =========================================================
 
-    public List<Map<String, Object>> getAllApplications() throws Exception {
+    public List<Application> getAllApplications() throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return applicationDAO.getAllApplications(connection);
         }
     }
 
     /** Case-insensitive search on student name, email or company name. */
-    public List<Map<String, Object>> filterApplications(
-            List<Map<String, Object>> applications,
+    public List<Application> filterApplications(
+            List<Application> applications,
             String search
     ) {
 
         String term = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
 
-        List<Map<String, Object>> result = new ArrayList<>();
+        List<Application> result = new ArrayList<>();
 
-        for (Map<String, Object> application : applications) {
+        for (Application application : applications) {
 
-            String studentName = String.valueOf(application.get("student_name"));
-            String email = String.valueOf(application.get("email"));
-            String company = String.valueOf(application.get("company_name"));
+            String studentName = application.getStudentName() == null ? "" : application.getStudentName();
+            String email = application.getStudentEmail() == null ? "" : application.getStudentEmail();
+            String company = application.getCompanyName() == null ? "" : application.getCompanyName();
 
             if (studentName.toLowerCase(Locale.ROOT).contains(term)
                     || email.toLowerCase(Locale.ROOT).contains(term)

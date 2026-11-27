@@ -19,7 +19,7 @@ public class CompanyDAO {
     ) throws Exception {
 
         String sql = """
-                INSERT INTO Companies
+                INSERT INTO companies
                 (company_name, industry, description)
                 VALUES (?, ?, ?)
                 """;
@@ -49,7 +49,7 @@ public class CompanyDAO {
 
         String sql = """
             SELECT company_id, company_name, industry, description
-            FROM Companies
+            FROM companies
             ORDER BY company_name
             """;
 
@@ -74,7 +74,7 @@ public class CompanyDAO {
 
         String sql = """
             SELECT company_id, company_name, industry, description
-            FROM Companies
+            FROM companies
             WHERE company_id = ?
             """;
 
@@ -102,7 +102,7 @@ public class CompanyDAO {
     ) throws Exception {
 
         String sql = """
-            UPDATE Companies
+            UPDATE companies
             SET company_name = ?, industry = ?, description = ?
             WHERE company_id = ?
             """;

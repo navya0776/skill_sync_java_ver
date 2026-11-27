@@ -234,7 +234,11 @@ public class CompanyDashboard {
                 String skillName = skill.getSkillName();
 
                 CheckBox skillCheckBox = new CheckBox(skillName);
-
+                skillCheckBox.setStyle(
+                        "-fx-text-fill: #222222;" +
+                                "-fx-font-size: 14px;" +
+                                "-fx-opacity: 1;"
+                );
                 ComboBox<Integer> levelBox = new ComboBox<>();
                 levelBox.getItems().addAll(1, 2, 3, 4, 5);
                 levelBox.setValue(1);
@@ -247,7 +251,12 @@ public class CompanyDashboard {
 
                 HBox skillRow = new HBox(15, skillCheckBox, levelBox);
                 skillRow.setAlignment(Pos.CENTER_LEFT);
+                skillRow.setStyle(
+                        "-fx-background-color: #eeeeee;" +
+                                "-fx-padding: 10;"
+                );
 
+                skillsBox.setStyle("-fx-background-color: white;");
                 skillsBox.getChildren().add(skillRow);
                 selectedSkills.put(skillId, levelBox);
 

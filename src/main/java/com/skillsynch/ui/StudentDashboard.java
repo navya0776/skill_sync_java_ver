@@ -55,7 +55,6 @@ public class StudentDashboard {
         Button profileBtn = createButton("My Profile");
         Button skillsBtn = createButton("My Skills");
         Button internshipsBtn = createButton("Internships");
-        Button eligibilityBtn = createButton("Eligibility");
         Button applicationsBtn = createButton("My Applications");
         Button offersBtn = createButton("My Offers");
 
@@ -74,7 +73,6 @@ public class StudentDashboard {
                 profileBtn,
                 skillsBtn,
                 internshipsBtn,
-                eligibilityBtn,
                 applicationsBtn,
                 offersBtn,
                 spacer,
@@ -94,7 +92,6 @@ public class StudentDashboard {
         skillsBtn.setOnAction(e -> { setActiveNav(skillsBtn); showSkills(); });
         offersBtn.setOnAction(e -> { setActiveNav(offersBtn); showMyOffers(); });
         internshipsBtn.setOnAction(e -> { setActiveNav(internshipsBtn); showInternships(); });
-        eligibilityBtn.setOnAction(e -> { setActiveNav(eligibilityBtn); showEligibility(); });
         applicationsBtn.setOnAction(e -> { setActiveNav(applicationsBtn); showMyApplications(); });
         logoutBtn.setOnAction(e -> logout.run());
 
@@ -633,16 +630,18 @@ public class StudentDashboard {
 
         content.getChildren().clear();
 
-        Label heading = createHeading("Available Internships");
-
+        Label heading = createHeading("Internships & Eligibility");
         VBox internshipList = new VBox(14);
 
         try {
-
-            // Service already returns only Approved / Published internships
             List<Internship> internships = service.getAvailableInternships();
+            Map<Integer, Eligibility> eligibilityMap = service.getEligibilityByInternship(studentId);
 
             for (Internship internship : internships) {
+
+                int internId = internship.getInternId();
+                Eligibility eligibility = eligibilityMap.get(internId);
+                boolean eligible = StudentService.isEligibleStatus(eligibility);
 
                 Label roleLabel = new Label(internship.getRole());
                 roleLabel.getStyleClass().add("card-title");
@@ -650,77 +649,82 @@ public class StudentDashboard {
                 Label companyLabel = new Label("Company: " + internship.getCompanyName());
                 companyLabel.getStyleClass().add("body-text");
 
-                Label descriptionLabel = new Label(
-                        "Description: " + (internship.getDescription() == null ? "No description" : internship.getDescription())
-                );
+                Label descriptionLabel = new Label("Description: " +
+                        (internship.getDescription() == null ? "No description" : internship.getDescription()));
                 descriptionLabel.getStyleClass().add("body-text");
                 descriptionLabel.setWrapText(true);
 
                 Label metaLabel = new Label(
                         "Minimum CGPA: " + (internship.getMinCgpa() == null ? "Not specified" : internship.getMinCgpa()) +
                                 "  |  Positions: " + internship.getNumberOfPositions() +
-                                "  |  Deadline: " + (internship.getApplicationDeadline() == null ? "Not specified" : internship.getApplicationDeadline())
-                );
+                                "  |  Deadline: " + (internship.getApplicationDeadline() == null ? "Not specified" : internship.getApplicationDeadline()));
                 metaLabel.getStyleClass().add("muted-text");
 
-                int internId = internship.getInternId();
+                Label matchLabel = new Label("Skill Match: " +
+                        (eligibility == null ? "N/A" : eligibility.getMatchPercentage() + "%"));
+                matchLabel.getStyleClass().add("body-text");
+
+                Label statusLabel = new Label("Eligibility: " +
+                        (eligibility == null ? "Unknown" : eligibility.getEligibilityStatus().getLabel()));
+                statusLabel.getStyleClass().add("status-badge");
+
+                VBox card = new VBox(8, roleLabel, companyLabel, descriptionLabel, metaLabel, matchLabel, statusLabel);
+
+                // Missing skills (only when not eligible)
+                try {
+                    List<String> gaps = service.getEligibilityGaps(studentId, internship);
+                    if (!gaps.isEmpty()) {
+                        Label gapsLabel = new Label((eligible ? "To strengthen your match: " : "What you need to become eligible: ")
+                                + String.join("; ", gaps));
+                        gapsLabel.getStyleClass().add("feedback-message");
+                        gapsLabel.setWrapText(true);
+                        card.getChildren().add(gapsLabel);
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
 
                 Button applyButton = new Button("Apply Now");
                 applyButton.getStyleClass().add("primary-button");
 
                 try {
-
                     if (service.hasApplied(studentId, internId)) {
                         applyButton.setText("Applied");
                         applyButton.setDisable(true);
+                    } else if (!eligible) {
+                        applyButton.setText("Not Eligible");
+                        applyButton.setDisable(true);
                     }
-
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
 
                 applyButton.setOnAction(e -> {
-
                     try {
-
                         boolean applied = service.applyForInternship(studentId, internId);
-
                         applyButton.setText("Applied");
                         applyButton.setDisable(true);
-
-                        if (applied) {
-                            new Alert(Alert.AlertType.INFORMATION,
-                                    "Application submitted successfully!").showAndWait();
-                        } else {
-                            new Alert(Alert.AlertType.WARNING,
-                                    "You have already applied for this internship.").showAndWait();
-                        }
-
+                        new Alert(applied ? Alert.AlertType.INFORMATION : Alert.AlertType.WARNING,
+                                applied ? "Application submitted successfully!"
+                                        : "You have already applied for this internship.").showAndWait();
                     } catch (Exception ex) {
-                        ex.printStackTrace();
-                        new Alert(Alert.AlertType.ERROR,
-                                "Application failed: " + ex.getMessage()).showAndWait();
+                        new Alert(Alert.AlertType.ERROR, ex.getMessage()).showAndWait();
                     }
                 });
 
-                VBox internshipCard = new VBox(8, roleLabel, companyLabel, descriptionLabel, metaLabel, applyButton);
-                internshipCard.setPadding(new Insets(20));
-                internshipCard.getStyleClass().add("card");
-
-                internshipList.getChildren().add(internshipCard);
+                card.getChildren().add(applyButton);
+                card.setPadding(new Insets(20));
+                card.getStyleClass().add("card");
+                internshipList.getChildren().add(card);
             }
 
             if (internshipList.getChildren().isEmpty()) {
-                internshipList.getChildren().add(
-                        new Label("No internships available currently.")
-                );
+                internshipList.getChildren().add(new Label("No internships available currently."));
             }
 
         } catch (Exception ex) {
             ex.printStackTrace();
-            new Alert(Alert.AlertType.ERROR,
-                    "Error loading internships: " + ex.getMessage())
-                    .showAndWait();
+            new Alert(Alert.AlertType.ERROR, "Error loading internships: " + ex.getMessage()).showAndWait();
         }
 
         ScrollPane scrollPane = new ScrollPane(internshipList);
@@ -729,7 +733,6 @@ public class StudentDashboard {
 
         content.getChildren().addAll(heading, scrollPane);
     }
-
     // MY APPLICATIONS PAGE
     private void showMyApplications() {
 
@@ -786,64 +789,6 @@ public class StudentDashboard {
 
         content.getChildren().addAll(heading, scrollPane);
     }
-
-    // ELIGIBILITY PAGE
-    private void showEligibility() {
-
-        content.getChildren().clear();
-
-        Label heading = createHeading("My Internship Eligibility");
-
-        VBox eligibilityList = new VBox(14);
-
-        try {
-
-            List<Eligibility> results =
-                    service.evaluateAndGetEligibility(studentId);
-
-            for (Eligibility result : results) {
-
-                Label roleLabel = new Label(result.getRole());
-                roleLabel.getStyleClass().add("card-title");
-
-                Label companyLabel = new Label("Company: " + result.getCompanyName());
-                companyLabel.getStyleClass().add("body-text");
-
-                Label matchLabel = new Label("Skill Match: " + result.getMatchPercentage() + "%");
-                matchLabel.getStyleClass().add("body-text");
-
-                Label statusLabel = new Label("Eligibility: " + result.getEligibilityStatus());
-                statusLabel.getStyleClass().add("status-badge");
-
-                VBox card = new VBox(8, roleLabel, companyLabel, matchLabel, statusLabel);
-                card.setPadding(new Insets(20));
-                card.getStyleClass().add("card");
-
-                eligibilityList.getChildren().add(card);
-            }
-
-            if (results.isEmpty()) {
-                eligibilityList.getChildren().add(
-                        new Label("No internship eligibility results available.")
-                );
-            }
-
-        } catch (Exception ex) {
-            ex.printStackTrace();
-
-            new Alert(
-                    Alert.AlertType.ERROR,
-                    "Error checking eligibility: " + ex.getMessage()
-            ).showAndWait();
-        }
-
-        ScrollPane scrollPane = new ScrollPane(eligibilityList);
-        scrollPane.setFitToWidth(true);
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
-
-        content.getChildren().addAll(heading, scrollPane);
-    }
-
     // MY OFFERS PAGE
     private void showMyOffers() {
 

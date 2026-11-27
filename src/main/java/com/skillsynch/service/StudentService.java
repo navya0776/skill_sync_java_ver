@@ -15,6 +15,7 @@ import com.skillsynch.model.OfferStatus;
 import com.skillsynch.model.Skill;
 import com.skillsynch.model.Student;
 import com.skillsynch.model.StudentSkill;
+import com.skillsynch.model.EligibilityStatus;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -23,6 +24,8 @@ import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 public class StudentService {
 
@@ -183,11 +186,6 @@ public class StudentService {
     }
 
     /** Returns true if the application was submitted, false if the student had already applied. */
-    public boolean applyForInternship(int studentId, int internshipId) throws Exception {
-        try (Connection connection = DatabaseConfig.getConnection()) {
-            return applicationDAO.applyForInternship(connection, studentId, internshipId);
-        }
-    }
 
     public List<Application> getStudentApplications(int studentId) throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
@@ -214,6 +212,49 @@ public class StudentService {
             }
 
             return eligibilityDAO.getStudentEligibility(connection, studentId);
+        }
+    }
+
+    public Map<Integer, Eligibility> getEligibilityByInternship(int studentId) throws Exception {
+        Map<Integer, Eligibility> map = new HashMap<>();
+        for (Eligibility e : evaluateAndGetEligibility(studentId)) {
+            map.put(e.getInternId(), e);
+        }
+        return map;
+    }
+
+    public static boolean isEligibleStatus(Eligibility e) {
+        return e != null && e.getEligibilityStatus() == EligibilityStatus.ELIGIBLE;
+    }
+
+    /** Everything the student still needs: CGPA shortfall plus missing/low skills. */
+    public List<String> getEligibilityGaps(int studentId, Internship internship) throws Exception {
+        List<String> gaps = new ArrayList<>();
+
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            Student student = studentDAO.getStudentById(connection, studentId);
+
+            if (internship.getMinCgpa() != null) {
+                double min = internship.getMinCgpa().doubleValue();
+                Double mine = student == null ? null : student.getCgpa();
+                if (mine == null || mine < min) {
+                    gaps.add("CGPA of at least " + min + " (yours: " + (mine == null ? "not set" : mine) + ")");
+                }
+            }
+
+            gaps.addAll(skillDAO.getMissingSkills(connection, studentId, internship.getInternId()));
+        }
+        return gaps;
+    }
+
+    // Replace the existing applyForInternship
+    public boolean applyForInternship(int studentId, int internshipId) throws Exception {
+        Eligibility e = getEligibilityByInternship(studentId).get(internshipId);
+        if (!isEligibleStatus(e)) {
+            throw new ValidationException("You are not eligible for this internship.");
+        }
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            return applicationDAO.applyForInternship(connection, studentId, internshipId);
         }
     }
 

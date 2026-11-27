@@ -72,7 +72,9 @@ public class EligibilityDAO {
         }
 
         double matchPercentage = totalSkills == 0
-                ? 0
+                ? 100
+
+
                 : (matchedSkills * 100.0 / totalSkills);
 
         EligibilityStatus eligibilityStatus;
@@ -101,6 +103,7 @@ public class EligibilityDAO {
             ps.setInt(1, studentId);
             ps.setInt(2, internId);
             ps.setDouble(3, matchPercentage);
+
             ps.setString(4, eligibilityStatus.getLabel());
             ps.executeUpdate();
         }

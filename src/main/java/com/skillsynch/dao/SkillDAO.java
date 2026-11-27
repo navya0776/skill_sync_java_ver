@@ -42,6 +42,44 @@ public class SkillDAO {
         return skills;
     }
 
+    // Required skills the student lacks, or has below the required level
+    public List<String> getMissingSkills(Connection connection, int studentId, int internId)
+            throws Exception {
+
+        String sql = """
+            SELECT s.skill_name, isk.min_level, ss.proficiency_level
+            FROM internship_skills isk
+            JOIN skills s ON s.skill_id = isk.skill_id
+            LEFT JOIN student_skills ss
+                   ON ss.skill_id = isk.skill_id AND ss.student_id = ?
+            WHERE isk.intern_id = ?
+              AND (ss.proficiency_level IS NULL
+                   OR ss.proficiency_level < isk.min_level)
+            ORDER BY s.skill_name
+            """;
+
+        List<String> missing = new ArrayList<>();
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, studentId);
+            ps.setInt(2, internId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int current = rs.getInt("proficiency_level");
+                    boolean hasSkill = !rs.wasNull();
+                    int required = rs.getInt("min_level");
+                    String name = rs.getString("skill_name");
+
+                    missing.add(hasSkill
+                            ? name + " (improve level " + current + " to " + required + ")"
+                            : name + " (need level " + required + ")");
+                }
+            }
+        }
+        return missing;
+    }
+
     // 2. GET SKILLS BELONGING TO A PARTICULAR STUDENT
     // (skill name and category are filled in from the Skills table)
     public List<StudentSkill> getStudentSkills(

@@ -128,6 +128,7 @@ public class StudentDashboard {
     }
 
     // MAIN DASHBOARD
+
     private void showDashboard() {
 
         content.getChildren().clear();
@@ -144,14 +145,57 @@ public class StudentDashboard {
 
         HBox cards = new HBox(16);
 
-        VBox card1 = createCard("Available Internships", "0");
-        VBox card2 = createCard("Applications", "0");
-        VBox card3 = createCard("Eligible Internships", "0");
+        try {
 
-        cards.getChildren().addAll(card1, card2, card3);
+            // 1. Count available internships
+            int availableCount =
+                    service.getAvailableInternships().size();
+
+            // 2. Count applications submitted by this student
+            int applicationCount =
+                    service.getStudentApplications(studentId).size();
+
+            // 3. Count internships for which the student is eligible
+            List<Eligibility> eligibilityList =
+                    service.evaluateAndGetEligibility(studentId);
+
+            long eligibleCount = eligibilityList.stream()
+                    .filter(StudentService::isEligibleStatus)
+                    .count();
+
+            // Create cards using actual database values
+            VBox card1 = createCard(
+                    "Available Internships",
+                    String.valueOf(availableCount)
+            );
+
+            VBox card2 = createCard(
+                    "Applications",
+                    String.valueOf(applicationCount)
+            );
+
+            VBox card3 = createCard(
+                    "Eligible Internships",
+                    String.valueOf(eligibleCount)
+            );
+
+            cards.getChildren().addAll(card1, card2, card3);
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            Label error = new Label(
+                    "Unable to load dashboard statistics: " + e.getMessage()
+            );
+
+            content.getChildren().addAll(banner, error);
+            return;
+        }
 
         content.getChildren().addAll(banner, cards);
     }
+
 
     // DASHBOARD CARDS
     private VBox createCard(String title, String value) {

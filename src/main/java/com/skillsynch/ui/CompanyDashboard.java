@@ -105,7 +105,11 @@ public class CompanyDashboard {
         return button;
     }
 
+<<<<<<< HEAD
     // DASHBOARD
+=======
+
+>>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
     private void showDashboard() {
 
         content.getChildren().clear();
@@ -118,16 +122,58 @@ public class CompanyDashboard {
 
         Label welcome = new Label("Welcome to SkillSynch!");
 
+        String internshipCount = "0";
+        String applicationCount = "0";
+        String shortlistedCount = "0";
+
+        try (Connection connection = DatabaseConfig.getConnection()) {
+
+            InternshipDAO internshipDAO = new InternshipDAO();
+            ApplicationDAO applicationDAO = new ApplicationDAO();
+
+            // Count internships posted by this company
+            List<Map<String, Object>> internships =
+                    internshipDAO.getCompanyInternships(
+                            connection, companyId
+                    );
+
+            // Count applications received by this company
+            List<Map<String, Object>> applications =
+                    applicationDAO.getCompanyApplications(
+                            connection, companyId
+                    );
+
+            // Count shortlisted students
+            List<Map<String, Object>> shortlisted =
+                    applicationDAO.getShortlistedStudents(
+                            connection, companyId
+                    );
+
+            internshipCount = String.valueOf(internships.size());
+            applicationCount = String.valueOf(applications.size());
+            shortlistedCount = String.valueOf(shortlisted.size());
+
+        } catch (Exception ex) {
+
+            ex.printStackTrace();
+
+            new Alert(
+                    Alert.AlertType.ERROR,
+                    "Unable to load dashboard statistics: " + ex.getMessage()
+            ).showAndWait();
+        }
+
         HBox cards = new HBox(20);
 
         cards.getChildren().addAll(
-                createCard("Posted Internships", "0"),
-                createCard("Applications", "0"),
-                createCard("Shortlisted Students", "0")
+                createCard("Posted Internships", internshipCount),
+                createCard("Applications", applicationCount),
+                createCard("Shortlisted Students", shortlistedCount)
         );
 
         content.getChildren().addAll(heading, welcome, cards);
     }
+
 
     private VBox createCard(String title, String value) {
 
@@ -174,7 +220,11 @@ public class CompanyDashboard {
         content.getChildren().addAll(heading, message);
     }
 
+<<<<<<< HEAD
     // POST INTERNSHIP
+=======
+
+>>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
     private void showPostInternship() {
 
         content.getChildren().clear();
@@ -203,12 +253,24 @@ public class CompanyDashboard {
 
         VBox skillsBox = new VBox(10);
 
+<<<<<<< HEAD
         // Skill id -> its level ComboBox (the ComboBox's userData holds the CheckBox)
         Map<Integer, ComboBox<Integer>> selectedSkills = new HashMap<>();
 
         try {
 
             List<Map<String, Object>> skills = service.getAllSkills();
+=======
+        Map<Integer, ComboBox<Integer>> selectedSkills = new HashMap<>();
+
+        // Load skills added by Admin
+        try (Connection connection = DatabaseConfig.getConnection()) {
+
+            SkillDAO skillDAO = new SkillDAO();
+
+            List<Map<String, Object>> skills =
+                    skillDAO.getAllSkills(connection);
+>>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
 
             if (skills.isEmpty()) {
                 skillsBox.getChildren().add(
@@ -218,8 +280,8 @@ public class CompanyDashboard {
 
             for (Map<String, Object> skill : skills) {
 
-                int skillId = (int) skill.get("skill_id");
-                String skillName = (String) skill.get("skill_name");
+                int skillId = ((Number) skill.get("skill_id")).intValue();
+                String skillName = String.valueOf(skill.get("skill_name"));
 
                 CheckBox skillCheckBox = new CheckBox(skillName);
 
@@ -237,18 +299,24 @@ public class CompanyDashboard {
                 skillRow.setAlignment(Pos.CENTER_LEFT);
 
                 skillsBox.getChildren().add(skillRow);
+
                 selectedSkills.put(skillId, levelBox);
 
+<<<<<<< HEAD
                 // Remember which checkbox belongs to this level box
+=======
+>>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
                 levelBox.setUserData(skillCheckBox);
             }
 
         } catch (Exception ex) {
+
             showAlert("Could not load skills: " + ex.getMessage());
             return;
         }
 
         Button submitBtn = new Button("Post Internship");
+
         submitBtn.setStyle(
                 "-fx-background-color: #4F46E5;" +
                         "-fx-text-fill: white;" +
@@ -290,9 +358,112 @@ public class CompanyDashboard {
 
                 showDashboard();
 
+<<<<<<< HEAD
             } catch (CompanyService.ValidationException ex) {
                 showAlert(ex.getMessage());
+=======
+                if (deadline.isBefore(LocalDate.now())) {
+                    showAlert("Deadline cannot be in the past.");
+                    return;
+                }
+
+                // Collect selected skills and their minimum levels
+                Map<Integer, Integer> requiredSkills = new HashMap<>();
+
+                for (Map.Entry<Integer, ComboBox<Integer>> entry
+                        : selectedSkills.entrySet()) {
+
+                    ComboBox<Integer> levelBox = entry.getValue();
+
+                    CheckBox checkBox = (CheckBox) levelBox.getUserData();
+
+                    if (checkBox.isSelected()) {
+
+                        if (levelBox.getValue() == null) {
+                            showAlert("Please select a minimum level for every selected skill.");
+                            return;
+                        }
+
+                        requiredSkills.put(
+                                entry.getKey(),
+                                levelBox.getValue()
+                        );
+                    }
+                }
+
+                if (requiredSkills.isEmpty()) {
+                    showAlert("Please select at least one required skill.");
+                    return;
+                }
+
+                // Save internship and required skills
+                try (Connection connection = DatabaseConfig.getConnection()) {
+
+                    connection.setAutoCommit(false);
+
+                    try {
+
+                        // Fetch the actual registered company name
+                        CompanyDAO companyDAO = new CompanyDAO();
+
+                        Map<String, Object> company =
+                                companyDAO.getCompanyById(connection, companyId);
+
+                        if (company == null || company.get("company_name") == null) {
+                            throw new Exception("Registered company details not found.");
+                        }
+
+                        String registeredCompanyName =
+                                String.valueOf(company.get("company_name"));
+
+                        InternshipDAO internshipDAO = new InternshipDAO();
+
+                        // Create internship using the real company name
+                        int internshipId = internshipDAO.createInternship(
+                                connection,
+                                companyId,
+                                registeredCompanyName,
+                                roleField.getText().trim(),
+                                descriptionField.getText().trim(),
+                                cgpa,
+                                positions,
+                                Date.valueOf(deadline)
+                        );
+
+                        // Save required skills
+                        internshipDAO.addRequiredSkills(
+                                connection,
+                                internshipId,
+                                requiredSkills
+                        );
+
+                        connection.commit();
+
+                        showAlert(
+                                "Internship posted successfully!\n" +
+                                        "Internship ID: " + internshipId + "\n" +
+                                        "Company: " + registeredCompanyName + "\n" +
+                                        "Status: Pending admin approval."
+                        );
+
+                        showDashboard();
+
+                    } catch (Exception ex) {
+
+                        connection.rollback();
+                        throw ex;
+                    }
+                }
+
+            } catch (NumberFormatException ex) {
+
+                showAlert(
+                        "CGPA must be a number and positions must be an integer."
+                );
+
+>>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
             } catch (Exception ex) {
+
                 showAlert("Could not post internship: " + ex.getMessage());
             }
         });
@@ -318,7 +489,11 @@ public class CompanyDashboard {
         content.getChildren().add(scrollPane);
     }
 
+<<<<<<< HEAD
     // MY INTERNSHIPS
+=======
+
+>>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
     private void showMyInternships() {
 
         content.getChildren().clear();

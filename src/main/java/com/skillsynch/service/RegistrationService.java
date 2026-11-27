@@ -35,12 +35,17 @@ public class RegistrationService {
             );
         }
 
+<<<<<<< HEAD
+=======
+        // Validate academic year (1 to 4)
+>>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
         if (year < 1 || year > 4) {
             throw new IllegalArgumentException(
-                    "Invalid academic year."
+                    "Academic year must be between 1 and 4."
             );
         }
 
+        // Validate CGPA
         if (cgpa < 0 || cgpa > 10) {
             throw new IllegalArgumentException(
                     "CGPA must be between 0 and 10."
@@ -69,7 +74,7 @@ public class RegistrationService {
                         email.trim()
                 );
 
-                // Create login account
+                // Create student login account
                 String sql = """
                         INSERT INTO Users
                         (username, password_hash, role, student_id)
@@ -96,7 +101,6 @@ public class RegistrationService {
         }
     }
 
-
     // COMPANY REGISTRATION
     public void registerCompany(
             String companyName,
@@ -116,6 +120,20 @@ public class RegistrationService {
             );
         }
 
+        // Validate industry
+        if (industry == null || industry.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Please enter the company industry."
+            );
+        }
+
+        // Validate description
+        if (description == null || description.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Please enter the company description."
+            );
+        }
+
         // Hash password
         String passwordHash = BCrypt.hashpw(
                 password,
@@ -132,11 +150,11 @@ public class RegistrationService {
                 int companyId = companyDAO.createCompany(
                         connection,
                         companyName.trim(),
-                        industry == null ? null : industry.trim(),
-                        description == null ? null : description.trim()
+                        industry.trim(),
+                        description.trim()
                 );
 
-                // Create login account
+                // Create company login account
                 String sql = """
                         INSERT INTO Users
                         (username, password_hash, role, company_id)

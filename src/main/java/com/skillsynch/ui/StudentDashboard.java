@@ -112,18 +112,19 @@ public class StudentDashboard {
     }
 
     // MAIN DASHBOARD
+
     private void showDashboard() {
 
         content.getChildren().clear();
 
         Label heading = new Label("Student Dashboard");
-
         heading.setStyle(
                 "-fx-font-size: 28px;" +
                         "-fx-font-weight: bold;"
         );
 
         Label welcome = new Label("Welcome to SkillSynch!");
+<<<<<<< HEAD
 
         welcome.setStyle("-fx-font-size: 18px;");
 
@@ -136,6 +137,96 @@ public class StudentDashboard {
         cards.getChildren().addAll(card1, card2, card3);
 
         content.getChildren().addAll(heading, welcome, cards);
+=======
+        welcome.setStyle("-fx-font-size: 18px;");
+
+        String internshipCount = "0";
+        String applicationCount = "0";
+        String eligibleCount = "0";
+
+        try (Connection connection = DatabaseConfig.getConnection()) {
+
+            InternshipDAO internshipDAO = new InternshipDAO();
+            ApplicationDAO applicationDAO = new ApplicationDAO();
+            EligibilityDAO eligibilityDAO = new EligibilityDAO();
+
+            // 1. Count approved and published internships
+            List<Map<String, Object>> internships =
+                    internshipDAO.getAllInternships(connection);
+
+            int available = 0;
+
+            for (Map<String, Object> internship : internships) {
+
+                String status = String.valueOf(internship.get("status"));
+
+                if (status.equals("Approved") ||
+                        status.equals("Published")) {
+
+                    available++;
+
+                    // Calculate and save eligibility
+                    int internId = Integer.parseInt(
+                            String.valueOf(internship.get("intern_id"))
+                    );
+
+                    eligibilityDAO.evaluateAndSave(
+                            connection, studentId, internId
+                    );
+                }
+            }
+
+            internshipCount = String.valueOf(available);
+
+            // 2. Count student's applications
+            List<Map<String, Object>> applications =
+                    applicationDAO.getStudentApplications(
+                            connection, studentId
+                    );
+
+            applicationCount = String.valueOf(applications.size());
+
+            // 3. Count eligible internships
+            List<Map<String, Object>> eligibilityResults =
+                    eligibilityDAO.getStudentEligibility(
+                            connection, studentId
+                    );
+
+            int eligible = 0;
+
+            for (Map<String, Object> result : eligibilityResults) {
+
+                if ("Eligible".equals(
+                        String.valueOf(result.get("eligibility_status")))) {
+                    eligible++;
+                }
+            }
+
+            eligibleCount = String.valueOf(eligible);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+
+            new Alert(
+                    Alert.AlertType.ERROR,
+                    "Unable to load dashboard statistics: " + ex.getMessage()
+            ).showAndWait();
+        }
+
+        HBox cards = new HBox(20);
+
+        cards.getChildren().addAll(
+                createCard("Available Internships", internshipCount),
+                createCard("Applications", applicationCount),
+                createCard("Eligible Internships", eligibleCount)
+        );
+
+        content.getChildren().addAll(
+                heading,
+                welcome,
+                cards
+        );
+>>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
     }
 
     // DASHBOARD CARDS

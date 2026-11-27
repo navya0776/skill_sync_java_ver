@@ -20,3 +20,12 @@ db-credentials.properties
 # OS files
 .DS_Store
 Thumbs.db
+# Generated output
+out/
+
+# Uploaded resumes and files
+uploads/
+
+# Local backup and duplicate projects
+/SkillSynch-Backup/
+/skill_sync_java_ver-main/

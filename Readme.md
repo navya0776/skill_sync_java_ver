@@ -1,10 +1,16 @@
+
+
 # SkillSynch – Placement Management System
 
-SkillSynch is a Java-based placement management system designed to streamline the campus recruitment process by connecting students, companies, and college placement administrators through a centralized platform.
+SkillSynch is a Java-based Placement Management System developed to simplify and organize the campus recruitment process. It connects students, companies, and college administrators through a centralized desktop application.
 
-The application provides role-based access for students, companies, and college administrators, enabling them to manage placement-related activities through dedicated dashboards.
+The system supports the complete placement workflow, including internship posting, administrator approval, student applications, candidate shortlisting, selection, and placement offer management.
 
-## Tech Stack
+## Project Repository
+
+**GitHub:** https://github.com/navya0776/skill_sync_java_ver
+
+## Technology Stack
 
 | Component | Technology |
 |---|---|
@@ -19,232 +25,154 @@ The application provides role-based access for students, companies, and college 
 
 ## Features
 
-### Student
-- Register and log in securely.
-- Maintain academic and personal details.
-- Manage skills and proficiency information.
-- Browse placement and internship opportunities.
-- Apply for available opportunities.
-- Track application status and offers.
-- Access a dedicated student dashboard.
+### 1. Student Module
+- Student registration and secure login.
+- View and update personal and academic profile information.
+- Upload, view, and download resumes.
+- Add skills and proficiency levels.
+- Browse approved internship opportunities.
+- Apply for internships.
+- Track application status.
+- View internship eligibility and matching information.
+- View, accept, or reject placement offers.
 
-### Company
-- Register and log in.
-- Maintain company information.
-- Create placement and internship opportunities.
-- View student applications.
+### 2. Company Module
+- Company registration and login.
+- Manage company profile.
+- Post internship opportunities with eligibility requirements.
+- Specify required skills and minimum proficiency levels.
+- Submit internships for administrator approval.
+- View posted internships and their approval status.
+- Review student applications.
 - Shortlist and select candidates.
-- Manage offers.
-- Access a dedicated company dashboard.
+- Create placement offers.
+- Track student offer responses.
 
-### College Admin
-- Secure login using a pre-created administrator account.
-- Review company opportunities.
-- Approve or reject opportunities.
-- Publish approved opportunities to students.
-- Monitor placement activities.
-- Access an administrative dashboard.
+### 3. College Administrator Module
+- Secure administrator login.
+- View dashboard statistics.
+- Manage student records.
+- Manage company records.
+- Add and manage skills.
+- Manage internship postings.
+- Approve or reject internship requests.
+- View and monitor student applications.
+- Monitor placement offers.
+- View placement reports and statistics.
 
-**Implementation note:** Dashboard interfaces and core application components are available. Some dashboard operations currently use sample data or prototype functionality and may require further database integration.
+## Application Workflow
+
+1. Students and companies register and log in.
+2. Companies create internship opportunities.
+3. Administrators review and approve or reject internship postings.
+4. Students browse approved opportunities and apply.
+5. Companies review applications and update candidate statuses.
+6. Companies shortlist and select suitable candidates.
+7. Selected candidates receive placement offers.
+8. Students accept or reject the offers.
+9. Companies and administrators monitor the final placement status.
 
 ## Project Structure
 
 ```text
 SkillSynch/
-│
 ├── pom.xml
-├── Readme.md
+├── README.md
 ├── .gitignore
-│
 └── src/
     └── main/
-        ├── java/
-        │   └── com/
-        │       └── skillsynch/
-        │           ├── Main.java
-        │           ├── DatabaseConnectionTest.java
-        │           ├── GenerateAdminHash.java
-        │           │
-        │           ├── config/
-        │           │   └── DatabaseConfig.java
-        │           │
-        │           ├── model/
-        │           │   └── User.java
-        │           │
-        │           ├── dao/
-        │           │   ├── UserDAO.java
-        │           │   ├── StudentDAO.java
-        │           │   ├── CompanyDAO.java
-        │           │   └── SkillDAO.java
-        │           │
-        │           ├── service/
-        │           │   ├── AuthService.java
-        │           │   └── RegistrationService.java
-        │           │
-        │           └── ui/
-        │               ├── LoginView.java
-        │               ├── RegisterView.java
-        │               ├── StudentDashboard.java
-        │               ├── CompanyDashboard.java
-        │               └── AdminDashboard.java
-        │
+        ├── java/com/skillsynch/
+        │   ├── Main.java
+        │   ├── DatabaseConnectionTest.java
+        │   ├── GenerateAdminHash.java
+        │   ├── config/
+        │   │   └── DatabaseConfig.java
+        │   ├── dao/
+        │   │   ├── ApplicationDAO.java
+        │   │   ├── CompanyDAO.java
+        │   │   ├── EligibilityDAO.java
+        │   │   ├── InternshipDAO.java
+        │   │   ├── SkillDAO.java
+        │   │   ├── StudentDAO.java
+        │   │   └── UserDAO.java
+        │   ├── model/
+        │   │   └── User.java
+        │   ├── service/
+        │   │   ├── AuthService.java
+        │   │   └── RegistrationService.java
+        │   └── ui/
+        │       ├── AdminDashboard.java
+        │       ├── CompanyDashboard.java
+        │       ├── LoginView.java
+        │       ├── RegisterView.java
+        │       └── StudentDashboard.java
         └── resources/
             └── css/
                 └── style.css
 ```
 
-The `db-credentials.properties` file is created locally and is intentionally excluded from version control.
+## Setup and Execution
 
-## Prerequisites
+### Prerequisites
 
-Install the following before setting up the project:
-
-- Java Development Kit (JDK) 17
-- IntelliJ IDEA
+- JDK 17
+- Maven
 - MySQL Server 8.x
-- MySQL Workbench
-- Git
+- IntelliJ IDEA
 
-Maven dependencies are managed through `pom.xml`. IntelliJ IDEA's bundled Maven can be used without installing Maven separately.
-
-## Installation and Setup
-
-### 1. Clone the repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/navya0776/skill_sync_java_ver.git
-cd skill_sync_java_ver
 ```
 
 Open the project in IntelliJ IDEA.
 
-### 2. Configure Java and Maven
+### 2. Database Configuration
 
-1. Set the Project SDK to Java 17.
-2. Ensure IntelliJ recognizes `pom.xml` as a Maven project.
-3. Reload Maven dependencies.
-4. Verify that JavaFX dependencies are downloaded successfully.
-
-### 3. Set up the MySQL database
-
-Start MySQL Server and open MySQL Workbench.
-
-Create the database:
-
-```sql
-CREATE DATABASE skillsynch;
-```
-
-Select the database:
-
-```sql
-USE skillsynch;
-```
-
-Import the SkillSynch SQL schema using MySQL Workbench, if the schema file is available.
-
-Verify the database tables:
-
-```sql
-SHOW TABLES;
-```
-
-### 4. Configure database credentials
-
-Create the following local configuration file:
-
-```text
-src/main/resources/db-credentials.properties
-```
-
-Add your MySQL connection details:
+1. Create the MySQL database named `skillsynch`.
+2. Create the required database tables and constraints.
+3. Create a local file named `db-credentials.properties` inside `src/main/resources/`.
+4. Add your database configuration:
 
 ```properties
 db.url=jdbc:mysql://localhost:3306/skillsynch
-db.username=root
+db.username=YOUR_MYSQL_USERNAME
 db.password=YOUR_MYSQL_PASSWORD
 ```
 
-Replace `YOUR_MYSQL_PASSWORD` with your local MySQL password.
+Replace the placeholders with your actual MySQL credentials.
 
-**Security:** Never commit this file to GitHub or share your database password.
+**Important:** Do not upload database passwords or credentials to GitHub.
 
-### 5. Run the application
+### 3. Build the Project
 
-Open the IntelliJ terminal in the project directory and execute:
+Run the following command from the project root:
 
 ```bash
-mvn clean javafx:run
+mvn clean compile
 ```
 
-Alternatively, run the `Main.java` class directly through IntelliJ IDEA.
+### 4. Run the Application
 
-## Initial Admin Account
+Run `com.skillsynch.Main` from IntelliJ IDEA.
 
-The College Admin account is created manually through MySQL Workbench.
+Alternatively, use:
 
-Public administrator registration is not available.
+```bash
+mvn javafx:run
+```
 
-For password security, store a BCrypt password hash in the `password_hash` column instead of storing a plain-text password.
+## Security
 
-The `GenerateAdminHash.java` utility can be used to generate a BCrypt hash.
-
-## Database Tables
-
-The SkillSynch database schema includes the following tables:
-
-- Users
-- Students
-- Companies
-- Skills
-- Student_Skills
-- Internships
-- Internship_Skills
-- Student_Languages
-- Internship_Languages
-- Eligibility
-- Applications
-- Offers
-
-## Authentication and Security
-
-- Passwords are hashed using BCrypt.
+- Passwords are securely hashed using jBCrypt.
 - Database operations use JDBC prepared statements.
-- Registration uses database transactions to maintain data consistency.
-- Database credentials are stored locally and excluded from version control.
-- College Admin accounts are created separately from public registration.
-- Role-based access directs users to their respective dashboards.
+- Database credentials are maintained locally.
+- Role-based authentication separates student, company, and administrator access.
+- Input validation is applied during registration and authentication.
 
-## Development Workflow
+## Project Contributors
 
-For collaborative development, create a separate branch for each feature:
+1. Vidhi Sidana
+2. Navya Arora
 
-```bash
-git checkout -b feature/your-feature-name
-```
-
-After making changes:
-
-```bash
-git add .
-git commit -m "Describe your changes"
-git push -u origin feature/your-feature-name
-```
-
-Create a Pull Request on GitHub to merge your changes into the `main` branch.
-
-## Future Enhancements
-
-- Complete database integration for all dashboard operations.
-- Automated eligibility calculation.
-- Advanced student skill matching.
-- Application tracking and shortlisting.
-- Interview scheduling and offer management.
-- Placement analytics and reporting.
-- Improved dashboard visualizations.
-
----
-
-## SkillSynch
-
-*A centralized platform for smarter campus placement management.*

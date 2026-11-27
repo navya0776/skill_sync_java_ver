@@ -76,6 +76,7 @@ public class AdminDashboard {
         studentsBtn.setOnAction(e -> showManageStudents());
         companiesBtn.setOnAction(e -> showManageCompanies());
         manageInternshipsBtn.setOnAction(e -> showManageInternships());
+
         internshipsBtn.setOnAction(e -> showInternshipApprovals());
         applicationsBtn.setOnAction(e -> showApplications());
         reportsBtn.setOnAction(e -> showPlacementReports());
@@ -187,13 +188,18 @@ public class AdminDashboard {
 
         Label heading = createHeading("Approve Internships");
 
-        Label message = new Label("Review and manage internship requests.");
+        Label message = new Label(
+                "Review and manage internship requests."
+        );
 
         VBox internshipList = new VBox(15);
 
-        try {
+        try (Connection connection = DatabaseConfig.getConnection()) {
 
-            List<Map<String, Object>> internships = service.getAllInternships();
+            InternshipDAO internshipDAO = new InternshipDAO();
+
+            List<Map<String, Object>> internships =
+                    internshipDAO.getAllInternships(connection);
 
             if (internships.isEmpty()) {
 
@@ -208,23 +214,38 @@ public class AdminDashboard {
                     int internshipId =
                             ((Number) internship.get("intern_id")).intValue();
 
-                    String companyName = String.valueOf(internship.get("company_name"));
-                    String role = String.valueOf(internship.get("role"));
-                    String description = String.valueOf(internship.get("description"));
-                    String status = String.valueOf(internship.get("status"));
+                    String companyName =
+                            String.valueOf(internship.get("company_name"));
+
+                    String role =
+                            String.valueOf(internship.get("role"));
+
+                    String description =
+                            String.valueOf(internship.get("description"));
+
+                    String status =
+                            String.valueOf(internship.get("status"));
 
                     Label roleLabel = new Label(role);
-                    roleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+                    roleLabel.setStyle(
+                            "-fx-font-size: 18px; -fx-font-weight: bold;"
+                    );
 
-                    Label companyLabel = new Label("Company: " + companyName);
-                    Label descriptionLabel = new Label("Description: " + description);
+                    Label companyLabel = new Label(
+                            "Company: " + companyName
+                    );
+
+                    Label descriptionLabel = new Label(
+                            "Description: " + description
+                    );
 
                     Label cgpaLabel = new Label(
                             "Minimum CGPA: " + internship.get("min_cgpa")
                     );
 
                     Label positionsLabel = new Label(
-                            "Positions: " + internship.get("number_of_positions")
+                            "Positions: " +
+                                    internship.get("number_of_positions")
                     );
 
                     Label deadlineLabel = new Label(
@@ -232,7 +253,9 @@ public class AdminDashboard {
                                     internship.get("application_deadline")
                     );
 
-                    Label statusLabel = new Label("Status: " + status);
+                    Label statusLabel = new Label(
+                            "Status: " + status
+                    );
 
                     HBox buttons = new HBox(15);
 
@@ -253,15 +276,28 @@ public class AdminDashboard {
                                         "-fx-padding: 10px;"
                         );
 
-                        approveBtn.setOnAction(e ->
-                                updateInternshipStatus(internshipId, "Approved")
-                        );
+                        approveBtn.setOnAction(e -> {
 
-                        rejectBtn.setOnAction(e ->
-                                updateInternshipStatus(internshipId, "Rejected")
-                        );
+                            updateInternshipStatus(
+                                    internshipId,
+                                    "Approved"
+                            );
 
-                        buttons.getChildren().addAll(approveBtn, rejectBtn);
+                        });
+
+                        rejectBtn.setOnAction(e -> {
+
+                            updateInternshipStatus(
+                                    internshipId,
+                                    "Rejected"
+                            );
+
+                        });
+
+                        buttons.getChildren().addAll(
+                                approveBtn,
+                                rejectBtn
+                        );
                     }
 
                     VBox internshipCard = new VBox(
@@ -304,14 +340,27 @@ public class AdminDashboard {
 
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
-        content.getChildren().addAll(heading, message, scrollPane);
+        content.getChildren().addAll(
+                heading,
+                message,
+                scrollPane
+        );
     }
 
-    private void updateInternshipStatus(int internshipId, String newStatus) {
+    private void updateInternshipStatus(
+            int internshipId,
+            String newStatus
+    ) {
 
-        try {
+        try (Connection connection = DatabaseConfig.getConnection()) {
 
-            service.updateInternshipStatus(internshipId, newStatus);
+            InternshipDAO internshipDAO = new InternshipDAO();
+
+            internshipDAO.updateInternshipStatus(
+                    connection,
+                    internshipId,
+                    newStatus
+            );
 
             showInternshipApprovals();
 
@@ -325,16 +374,19 @@ public class AdminDashboard {
         }
     }
 
-    // PLACEMENT REPORTS
+
     private void showPlacementReports() {
 
         content.getChildren().clear();
 
         Label heading = createHeading("Placement Reports");
 
-        try {
+        try (Connection connection = DatabaseConfig.getConnection()) {
 
-            Map<String, Integer> stats = service.getApplicationStatistics();
+            ApplicationDAO dao = new ApplicationDAO();
+
+            Map<String, Integer> stats =
+                    dao.getApplicationStatistics(connection);
 
             HBox cards = new HBox(20);
 
@@ -363,7 +415,10 @@ public class AdminDashboard {
 
             cards.setSpacing(15);
 
-            content.getChildren().addAll(heading, cards);
+            content.getChildren().addAll(
+                    heading,
+                    cards
+            );
 
         } catch (Exception e) {
 
@@ -371,13 +426,16 @@ public class AdminDashboard {
                     "Error loading placement reports: " + e.getMessage()
             );
 
-            content.getChildren().addAll(heading, errorLabel);
+            content.getChildren().addAll(
+                    heading,
+                    errorLabel
+            );
 
             e.printStackTrace();
         }
-    }
+    } // End of showPlacementReports()
 
-    // MANAGE SKILLS
+
     private void showManageSkills() {
 
         content.getChildren().clear();
@@ -402,20 +460,25 @@ public class AdminDashboard {
 
         addSkillBtn.setOnAction(e -> {
 
-            try {
+            String skillName = skillNameField.getText().trim();
+            String category = categoryField.getText().trim();
 
-                service.addSkill(skillNameField.getText(), categoryField.getText());
+            if (skillName.isEmpty() || category.isEmpty()) {
+                statusLabel.setText("Please fill in both fields.");
+                statusLabel.setStyle("-fx-text-fill: red;");
+                return;
+            }
+
+            try (Connection conn = DatabaseConfig.getConnection()) {
+
+                SkillDAO skillDAO = new SkillDAO();
+                skillDAO.addSkill(conn, skillName, category);
 
                 statusLabel.setText("Skill added successfully!");
                 statusLabel.setStyle("-fx-text-fill: green;");
 
                 skillNameField.clear();
                 categoryField.clear();
-
-            } catch (AdminService.ValidationException ex) {
-
-                statusLabel.setText(ex.getMessage());
-                statusLabel.setStyle("-fx-text-fill: red;");
 
             } catch (Exception ex) {
 
@@ -445,10 +508,12 @@ public class AdminDashboard {
                         "-fx-border-radius: 12px;"
         );
 
-        content.getChildren().addAll(heading, description, form);
+        content.getChildren().addAll(
+                heading,
+                description,
+                form
+        );
     }
-
-    // MANAGE COMPANIES
     private void showManageCompanies() {
 
         content.getChildren().clear();
@@ -493,9 +558,12 @@ public class AdminDashboard {
 
             companyList.getChildren().clear();
 
-            try {
+            try (Connection connection = DatabaseConfig.getConnection()) {
 
-                List<Map<String, Object>> companies = service.getAllCompanies();
+                CompanyDAO companyDAO = new CompanyDAO();
+
+                List<Map<String, Object>> companies =
+                        companyDAO.getAllCompanies(connection);
 
                 if (companies.isEmpty()) {
                     companyList.getChildren().add(
@@ -525,12 +593,24 @@ public class AdminDashboard {
 
         addButton.setOnAction(e -> {
 
-            try {
+            String companyName = companyNameField.getText().trim();
+            String industry = industryField.getText().trim();
+            String description = descriptionField.getText().trim();
 
-                service.addCompany(
-                        companyNameField.getText(),
-                        industryField.getText(),
-                        descriptionField.getText()
+            if (companyName.isEmpty() || industry.isEmpty()) {
+                messageLabel.setText("Company name and industry are required.");
+                return;
+            }
+
+            try (Connection connection = DatabaseConfig.getConnection()) {
+
+                CompanyDAO companyDAO = new CompanyDAO();
+
+                companyDAO.createCompany(
+                        connection,
+                        companyName,
+                        industry,
+                        description
                 );
 
                 messageLabel.setText("Company added successfully!");
@@ -541,8 +621,6 @@ public class AdminDashboard {
 
                 loadCompanies.run();
 
-            } catch (AdminService.ValidationException ex) {
-                messageLabel.setText(ex.getMessage());
             } catch (Exception ex) {
                 messageLabel.setText("Error: " + ex.getMessage());
             }
@@ -558,7 +636,6 @@ public class AdminDashboard {
         loadCompanies.run();
     }
 
-    // MANAGE INTERNSHIPS
     private void showManageInternships() {
 
         content.getChildren().clear();
@@ -624,30 +701,91 @@ public class AdminDashboard {
         form.setPadding(new Insets(15));
         form.setMaxWidth(500);
 
-        // Load companies
-        try {
+        // Load companies from database
+        try (Connection connection = DatabaseConfig.getConnection()) {
 
-            companyDropdown.getItems().addAll(service.getAllCompanies());
+            CompanyDAO companyDAO = new CompanyDAO();
+
+            List<Map<String, Object>> companies =
+                    companyDAO.getAllCompanies(connection);
+
+            companyDropdown.getItems().addAll(companies);
 
         } catch (Exception e) {
-            messageLabel.setText("Error loading companies: " + e.getMessage());
+            messageLabel.setText(
+                    "Error loading companies: " + e.getMessage()
+            );
         }
 
         // Add internship
         addButton.setOnAction(e -> {
 
+            Map<String, Object> selectedCompany =
+                    companyDropdown.getValue();
+
+            String role = roleField.getText().trim();
+            String description = descriptionField.getText().trim();
+
+            if (selectedCompany == null ||
+                    role.isEmpty() ||
+                    description.isEmpty() ||
+                    cgpaField.getText().trim().isEmpty() ||
+                    positionsField.getText().trim().isEmpty() ||
+                    deadlinePicker.getValue() == null) {
+
+                messageLabel.setText("Please fill in all fields.");
+                return;
+            }
+
             try {
 
-                service.addInternship(
-                        companyDropdown.getValue(),
-                        roleField.getText(),
-                        descriptionField.getText(),
-                        cgpaField.getText(),
-                        positionsField.getText(),
-                        deadlinePicker.getValue()
-                );
+                double minCgpa =
+                        Double.parseDouble(cgpaField.getText().trim());
 
-                messageLabel.setText("Internship added successfully! Status: Pending");
+                int positions =
+                        Integer.parseInt(positionsField.getText().trim());
+
+                if (minCgpa < 0 || minCgpa > 10) {
+                    messageLabel.setText("CGPA must be between 0 and 10.");
+                    return;
+                }
+
+                if (positions <= 0) {
+                    messageLabel.setText(
+                            "Number of positions must be greater than 0."
+                    );
+                    return;
+                }
+
+                int companyId =
+                        ((Number) selectedCompany.get("company_id")).intValue();
+
+                String companyName =
+                        selectedCompany.get("company_name").toString();
+
+                java.sql.Date deadline =
+                        java.sql.Date.valueOf(deadlinePicker.getValue());
+
+                try (Connection connection =
+                             DatabaseConfig.getConnection()) {
+
+                    InternshipDAO internshipDAO = new InternshipDAO();
+
+                    internshipDAO.createInternship(
+                            connection,
+                            companyId,
+                            companyName,
+                            role,
+                            description,
+                            minCgpa,
+                            positions,
+                            deadline
+                    );
+                }
+
+                messageLabel.setText(
+                        "Internship added successfully! Status: Pending"
+                );
 
                 companyDropdown.setValue(null);
                 roleField.clear();
@@ -656,27 +794,31 @@ public class AdminDashboard {
                 positionsField.clear();
                 deadlinePicker.setValue(null);
 
-            } catch (AdminService.ValidationException ex) {
+            } catch (NumberFormatException ex) {
 
-                messageLabel.setText(ex.getMessage());
+                messageLabel.setText(
+                        "Enter valid numbers for CGPA and positions."
+                );
 
             } catch (Exception ex) {
 
-                messageLabel.setText("Error: " + ex.getMessage());
+                messageLabel.setText(
+                        "Error: " + ex.getMessage()
+                );
             }
         });
 
         content.getChildren().addAll(heading, form);
     }
-
-    // MANAGE STUDENTS
     private void showManageStudents() {
 
         content.getChildren().clear();
 
         Label heading = createHeading("Manage Students");
 
-        Label description = new Label("View and search all registered students.");
+        Label description = new Label(
+                "View and search all registered students."
+        );
 
         TextField searchField = new TextField();
         searchField.setPromptText("Search by student name or email...");
@@ -684,12 +826,16 @@ public class AdminDashboard {
 
         VBox studentList = new VBox(12);
 
-        List<Map<String, Object>> allStudents = new ArrayList<>();
+        List<Map<String, Object>> allStudents = new java.util.ArrayList<>();
 
-        // Load students
-        try {
+        // Load students from database
+        try (Connection connection = DatabaseConfig.getConnection()) {
 
-            allStudents.addAll(service.getAllStudents());
+            StudentDAO studentDAO = new StudentDAO();
+
+            allStudents.addAll(
+                    studentDAO.getAllStudents(connection)
+            );
 
         } catch (Exception e) {
 
@@ -698,27 +844,58 @@ public class AdminDashboard {
             );
         }
 
-        // Display (filtered) students
+        // Display students
         Runnable displayStudents = () -> {
 
             studentList.getChildren().clear();
 
-            List<Map<String, Object>> matches =
-                    service.filterStudents(allStudents, searchField.getText());
+            String search = searchField.getText()
+                    .trim()
+                    .toLowerCase();
 
-            for (Map<String, Object> student : matches) {
+            int count = 0;
+
+            for (Map<String, Object> student : allStudents) {
 
                 String name = String.valueOf(student.get("name"));
                 String email = String.valueOf(student.get("email"));
 
+                String normalizedName = name.trim()
+                        .toLowerCase(Locale.ROOT)
+                        .replaceAll("\\s+", " ");
+
+                String normalizedEmail = email.trim()
+                        .toLowerCase(Locale.ROOT);
+
+                String normalizedSearch = search.trim()
+                        .toLowerCase(Locale.ROOT)
+                        .replaceAll("\\s+", " ");
+
+                if (!normalizedName.contains(normalizedSearch)
+                        && !normalizedEmail.contains(normalizedSearch)) {
+                    continue;
+                }
+
+                count++;
+
                 Label nameLabel = new Label(name);
-                nameLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+                nameLabel.setStyle(
+                        "-fx-font-size: 18px; -fx-font-weight: bold;"
+                );
 
                 Label emailLabel = new Label("Email: " + email);
 
-                Label branchLabel = new Label("Branch: " + student.get("branch"));
-                Label yearLabel = new Label("Year: " + student.get("year"));
-                Label cgpaLabel = new Label("CGPA: " + student.get("cgpa"));
+                Label branchLabel = new Label(
+                        "Branch: " + student.get("branch")
+                );
+
+                Label yearLabel = new Label(
+                        "Year: " + student.get("year")
+                );
+
+                Label cgpaLabel = new Label(
+                        "CGPA: " + student.get("cgpa")
+                );
 
                 Label resumeLabel = new Label(
                         "Resume: " + (
@@ -727,7 +904,6 @@ public class AdminDashboard {
                                         : student.get("resume_url")
                         )
                 );
-
                 int studentId = ((Number) student.get("student_id")).intValue();
 
                 Button deleteBtn = new Button("Delete Student");
@@ -753,9 +929,14 @@ public class AdminDashboard {
 
                         if (response == ButtonType.OK) {
 
-                            try {
+                            try (Connection connection =
+                                         DatabaseConfig.getConnection()) {
 
-                                service.deleteStudent(studentId);
+                                StudentDAO studentDAO = new StudentDAO();
+
+                                studentDAO.deleteStudent(connection, studentId);
+
+                                allStudents.remove(student);
 
                                 showManageStudents();
 
@@ -780,8 +961,9 @@ public class AdminDashboard {
                         }
                     });
                 });
-
-                Label idLabel = new Label("Student ID: " + student.get("student_id"));
+                Label idLabel = new Label(
+                        "Student ID: " + student.get("student_id")
+                );
 
                 VBox studentCard = new VBox(
                         8,
@@ -807,7 +989,7 @@ public class AdminDashboard {
                 studentList.getChildren().add(studentCard);
             }
 
-            if (matches.isEmpty()) {
+            if (count == 0) {
                 studentList.getChildren().add(
                         new Label("No matching students found.")
                 );
@@ -815,7 +997,8 @@ public class AdminDashboard {
         };
 
         searchField.textProperty().addListener(
-                (observable, oldValue, newValue) -> displayStudents.run()
+                (observable, oldValue, newValue) ->
+                        displayStudents.run()
         );
 
         ScrollPane scrollPane = new ScrollPane(studentList);
@@ -832,8 +1015,6 @@ public class AdminDashboard {
 
         displayStudents.run();
     }
-
-    // ALL APPLICATIONS
     private void showApplications() {
 
         content.getChildren().clear();
@@ -850,11 +1031,13 @@ public class AdminDashboard {
 
         VBox applicationList = new VBox(12);
 
-        List<Map<String, Object>> allApplications = new ArrayList<>();
+        List<Map<String, Object>> allApplications = new java.util.ArrayList<>();
 
-        try {
+        try (Connection connection = DatabaseConfig.getConnection()) {
 
-            allApplications.addAll(service.getAllApplications());
+            ApplicationDAO dao = new ApplicationDAO();
+
+            allApplications.addAll(dao.getAllApplications(connection));
 
         } catch (Exception e) {
             applicationList.getChildren().add(
@@ -866,24 +1049,46 @@ public class AdminDashboard {
 
             applicationList.getChildren().clear();
 
-            List<Map<String, Object>> matches =
-                    service.filterApplications(allApplications, searchField.getText());
+            String search = searchField.getText()
+                    .trim()
+                    .toLowerCase(Locale.ROOT);
 
-            for (Map<String, Object> application : matches) {
+            int count = 0;
 
-                Label studentLabel = new Label(
-                        "Student: " + application.get("student_name")
+            for (Map<String, Object> application : allApplications) {
+
+                String studentName = String.valueOf(application.get("student_name"));
+                String email = String.valueOf(application.get("email"));
+                String company = String.valueOf(application.get("company_name"));
+
+                if (!studentName.toLowerCase(Locale.ROOT).contains(search)
+                        && !email.toLowerCase(Locale.ROOT).contains(search)
+                        && !company.toLowerCase(Locale.ROOT).contains(search)) {
+                    continue;
+                }
+
+                count++;
+
+                Label studentLabel = new Label("Student: " + studentName);
+                studentLabel.setStyle(
+                        "-fx-font-size: 18px; -fx-font-weight: bold;"
                 );
-                studentLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
                 Label idLabel = new Label(
                         "Application ID: " + application.get("application_id")
                 );
 
-                Label emailLabel = new Label("Email: " + application.get("email"));
-                Label branchLabel = new Label("Branch: " + application.get("branch"));
-                Label cgpaLabel = new Label("CGPA: " + application.get("cgpa"));
-                Label companyLabel = new Label("Company: " + application.get("company_name"));
+                Label emailLabel = new Label("Email: " + email);
+
+                Label branchLabel = new Label(
+                        "Branch: " + application.get("branch")
+                );
+
+                Label cgpaLabel = new Label(
+                        "CGPA: " + application.get("cgpa")
+                );
+
+                Label companyLabel = new Label("Company: " + company);
 
                 Label roleLabel = new Label(
                         "Internship Role: " + application.get("role")
@@ -893,7 +1098,9 @@ public class AdminDashboard {
                         "Application Date: " + application.get("application_date")
                 );
 
-                Label statusLabel = new Label("Status: " + application.get("status"));
+                Label statusLabel = new Label(
+                        "Status: " + application.get("status")
+                );
 
                 VBox card = new VBox(
                         8,
@@ -919,7 +1126,7 @@ public class AdminDashboard {
                 applicationList.getChildren().add(card);
             }
 
-            if (matches.isEmpty()) {
+            if (count == 0) {
                 applicationList.getChildren().add(
                         new Label("No matching applications found.")
                 );
@@ -927,7 +1134,8 @@ public class AdminDashboard {
         };
 
         searchField.textProperty().addListener(
-                (observable, oldValue, newValue) -> displayApplications.run()
+                (observable, oldValue, newValue) ->
+                        displayApplications.run()
         );
 
         ScrollPane scrollPane = new ScrollPane(applicationList);
@@ -950,3 +1158,4 @@ public class AdminDashboard {
         displayApplications.run();
     }
 }
+

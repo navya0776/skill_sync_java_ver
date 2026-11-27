@@ -88,17 +88,26 @@ public class InternshipDAO {
         }
     }
 
+<<<<<<< HEAD
     public List<Internship> getAllInternships(
+=======
+
+    public List<Map<String, Object>> getAllInternships(
+>>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
             Connection connection
     ) throws Exception {
 
         String sql = """
-            SELECT intern_id, company_id, company_name, role,
-                   description, min_cgpa, number_of_positions,
-                   application_deadline, status
-            FROM Internships
-            ORDER BY intern_id DESC
-            """;
+        SELECT i.intern_id, i.company_id,
+               c.company_name AS company_name,
+               i.role, i.description, i.min_cgpa,
+               i.number_of_positions,
+               i.application_deadline, i.status
+        FROM Internships i
+        LEFT JOIN Companies c
+            ON i.company_id = c.company_id
+        ORDER BY i.intern_id DESC
+        """;
 
         List<Internship> internships = new ArrayList<>();
 
@@ -180,12 +189,17 @@ public class InternshipDAO {
         }
     }
 
+<<<<<<< HEAD
     public List<Internship> getCompanyInternships(
+=======
+    public List<Map<String, Object>> getCompanyInternships(
+>>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
             Connection connection,
             int companyId
     ) throws Exception {
 
         String sql = """
+<<<<<<< HEAD
             SELECT intern_id, company_id, company_name, role,
                    description, min_cgpa, number_of_positions,
                    application_deadline, status
@@ -193,10 +207,24 @@ public class InternshipDAO {
             WHERE company_id = ?
             ORDER BY intern_id DESC
             """;
+=======
+        SELECT i.intern_id, i.company_id,
+               c.company_name AS company_name,
+               i.role, i.description, i.min_cgpa,
+               i.number_of_positions,
+               i.application_deadline, i.status
+        FROM Internships i
+        LEFT JOIN Companies c
+            ON i.company_id = c.company_id
+        WHERE i.company_id = ?
+        ORDER BY i.intern_id DESC
+        """;
+>>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
 
         List<Internship> internships = new ArrayList<>();
 
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement =
+                     connection.prepareStatement(sql)) {
 
             statement.setInt(1, companyId);
 
@@ -211,6 +239,7 @@ public class InternshipDAO {
         return internships;
     }
 
+<<<<<<< HEAD
     // Turns the current ResultSet row into an Internship
     private Internship mapInternship(ResultSet rs) throws SQLException {
 
@@ -227,3 +256,6 @@ public class InternshipDAO {
         );
     }
 }
+=======
+}
+>>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988

@@ -128,6 +128,7 @@ public class AdminDashboard {
     }
 
     // DASHBOARD
+
     private void showDashboard() {
 
         content.getChildren().clear();
@@ -142,16 +143,39 @@ public class AdminDashboard {
         banner.setPadding(new Insets(24));
         banner.getStyleClass().add("hero-banner");
 
-        HBox cards = new HBox(16);
+        try {
 
-        cards.getChildren().addAll(
-                createCard("Total Students", "0"),
-                createCard("Total Companies", "0"),
-                createCard("Internships", "0")
-        );
+            int totalStudents = service.getAllStudents().size();
+            int totalCompanies = service.getAllCompanies().size();
+            int totalInternships = service.getAllInternships().size();
 
-        content.getChildren().addAll(banner, cards);
+            HBox cards = new HBox(16);
+
+            cards.getChildren().addAll(
+                    createCard("Total Students",
+                            String.valueOf(totalStudents)),
+
+                    createCard("Total Companies",
+                            String.valueOf(totalCompanies)),
+
+                    createCard("Internships",
+                            String.valueOf(totalInternships))
+            );
+
+            content.getChildren().addAll(banner, cards);
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            Label errorLabel = new Label(
+                    "Unable to load dashboard: " + e.getMessage()
+            );
+
+            content.getChildren().addAll(banner, errorLabel);
+        }
     }
+
 
     private VBox createCard(String title, String value) {
 

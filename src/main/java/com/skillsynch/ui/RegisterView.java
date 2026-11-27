@@ -18,16 +18,16 @@ public class RegisterView {
 
     public Parent getView(Runnable openLogin) {
 
-        VBox container = new VBox(15);
-        container.setAlignment(Pos.CENTER);
-        container.setPadding(new Insets(35));
+        VBox container = new VBox(14);
+        container.setAlignment(Pos.CENTER_LEFT);
+        container.setPadding(new Insets(10));
         container.setMaxWidth(460);
 
         Label logo = new Label("SkillSynch");
         logo.setStyle(
-                "-fx-font-size: 28px;" +
+                "-fx-font-size: 26px;" +
                         "-fx-font-weight: bold;" +
-                        "-fx-text-fill: #4F46E5;"
+                        "-fx-text-fill: #2563EB;"
         );
 
         Label heading = new Label("Create your account");
@@ -286,32 +286,26 @@ public class RegisterView {
                 registerButton
         );
 
-        VBox card = new VBox(22,
+        VBox card = new VBox(20,
                 logo,
-                new VBox(7, heading, subtitle),
+                new VBox(6, heading, subtitle),
                 form,
                 footer
         );
 
-        card.setPadding(new Insets(35));
+        card.setPadding(new Insets(36));
         card.setMaxWidth(500);
-        card.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-background-radius: 16px;" +
-                        "-fx-border-color: #E2E8F0;" +
-                        "-fx-border-radius: 16px;"
-        );
+        card.getStyleClass().add("card");
 
         card.setAlignment(Pos.CENTER_LEFT);
 
         StackPane root = new StackPane(card);
         root.setPadding(new Insets(30));
-        root.setStyle("-fx-background-color: #F8FAFC;");
+        root.getStyleClass().add("content-area");
 
         ScrollPane scrollPane = new ScrollPane(root);
         scrollPane.setFitToWidth(true);
         scrollPane.setFitToHeight(true);
-        scrollPane.setStyle("-fx-background: #F8FAFC;");
 
         return scrollPane;
     }
@@ -319,6 +313,7 @@ public class RegisterView {
     private VBox field(String labelText, Control control) {
 
         Label label = new Label(labelText);
+        label.getStyleClass().add("field-label");
 
         control.setMaxWidth(Double.MAX_VALUE);
 

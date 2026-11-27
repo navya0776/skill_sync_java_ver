@@ -1,17 +1,18 @@
 package com.skillsynch.dao;
 
-import com.skillsynch.config.DatabaseConfig;
-import java.util.ArrayList;
-import java.util.List;
+import com.skillsynch.model.Student;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.HashMap;
-import java.util.Map;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class StudentDAO {
 
     // CREATE STUDENT DURING REGISTRATION
+    // (signature unchanged, so existing registration code keeps working)
     public int createStudent(
             Connection connection,
             String name,
@@ -52,16 +53,28 @@ public class StudentDAO {
         throw new Exception("Student creation failed.");
     }
 
-    // GET STUDENT PROFILE FROM MYSQL
-    public Map<String, Object> getStudentById(
+    // Convenience overload that takes a Student object
+    public int createStudent(Connection connection, Student student) throws Exception {
+        return createStudent(
+                connection,
+                student.getName(),
+                student.getBranch(),
+                student.getYear(),
+                student.getCgpa(),
+                student.getEmail()
+        );
+    }
+
+    // GET STUDENT PROFILE (returns null if not found)
+    public Student getStudentById(
             Connection connection,
             int studentId
     ) throws Exception {
 
         String sql = """
                 SELECT student_id, name, branch, year, cgpa, email, resume_url
-                                    FROM Students
-                                    WHERE student_id = ?
+                FROM Students
+                WHERE student_id = ?
                 """;
 
         try (PreparedStatement statement =
@@ -72,73 +85,38 @@ public class StudentDAO {
             try (ResultSet result = statement.executeQuery()) {
 
                 if (result.next()) {
-
-                    Map<String, Object> student = new HashMap<>();
-
-                    student.put(
-                            "student_id",
-                            result.getInt("student_id")
-                    );
-
-                    student.put(
-                            "name",
-                            result.getString("name")
-                    );
-
-                    student.put(
-                            "branch",
-                            result.getString("branch")
-                    );
-
-                    student.put(
-                            "year",
-                            result.getInt("year")
-                    );
-
-                    student.put(
-                            "cgpa",
-                            result.getDouble("cgpa")
-                    );
-
-                    student.put(
-                            "email",
-                            result.getString("email")
-                    );
-                    student.put(
-                            "resume_url",
-                            result.getString("resume_url")
-                    );
-                    return student;
+                    return mapStudent(result);
                 }
             }
         }
 
         return null;
     }
+
     // GET ALL STUDENTS FOR ADMIN DASHBOARD
-    public List<Map<String, Object>> getAllStudents(
+    public List<Student> getAllStudents(
             Connection connection
     ) throws Exception {
 
         String sql = """
-            SELECT
-                s.student_id,
-                s.name,
-                s.branch,
-                s.year,
-                s.cgpa,
-                s.email,
-                s.resume_url,
-                u.user_id,
-                u.username
-            FROM Students s
-            LEFT JOIN Users u
-                ON s.student_id = u.student_id
-                AND u.role = 'student'
-            ORDER BY s.student_id
-            """;
+                SELECT
+                    s.student_id,
+                    s.name,
+                    s.branch,
+                    s.year,
+                    s.cgpa,
+                    s.email,
+                    s.resume_url,
+                    u.user_id,
+                    u.username
+                FROM Students s
+                LEFT JOIN Users u
+                    ON s.student_id = u.student_id
+                    AND u.role = 'student'
+                ORDER BY s.student_id
+                """;
 
-        List<Map<String, Object>> students = new ArrayList<>();
+        List<Student> students = new ArrayList<>();
 
         try (PreparedStatement statement =
                      connection.prepareStatement(sql);
@@ -146,17 +124,15 @@ public class StudentDAO {
 
             while (result.next()) {
 
-                Map<String, Object> student = new HashMap<>();
+                Student student = mapStudent(result);
 
-                student.put("student_id", result.getInt("student_id"));
-                student.put("name", result.getString("name"));
-                student.put("branch", result.getString("branch"));
-                student.put("year", result.getInt("year"));
-                student.put("cgpa", result.getDouble("cgpa"));
-                student.put("email", result.getString("email"));
-                student.put("resume_url", result.getString("resume_url"));
-                student.put("user_id", result.getObject("user_id"));
-                student.put("username", result.getString("username"));
+                int userId = result.getInt("user_id");
+
+                if (!result.wasNull()) {
+                    student.setUserId(userId);
+                }
+
+                student.setUsername(result.getString("username"));
 
                 students.add(student);
             }
@@ -164,6 +140,7 @@ public class StudentDAO {
 
         return students;
     }
+
     // DELETE STUDENT
     public void deleteStudent(
             Connection connection,
@@ -171,9 +148,9 @@ public class StudentDAO {
     ) throws Exception {
 
         String sql = """
-            DELETE FROM Students
-            WHERE student_id = ?
-            """;
+                DELETE FROM Students
+                WHERE student_id = ?
+                """;
 
         try (PreparedStatement statement =
                      connection.prepareStatement(sql)) {
@@ -187,39 +164,34 @@ public class StudentDAO {
             }
         }
     }
-    // UPDATE STUDENT PROFILE
+
+    // UPDATE STUDENT PROFILE (uses student.getStudentId() to find the row)
     public void updateStudent(
             Connection connection,
-            int studentId,
-            String name,
-            String branch,
-            int year,
-            double cgpa,
-            String email,
-            String resumeUrl
+            Student student
     ) throws Exception {
 
         String sql = """
-            UPDATE Students
-            SET name = ?,
-                branch = ?,
-                year = ?,
-                cgpa = ?,
-                email = ?,
-                resume_url = ?
-            WHERE student_id = ?
-            """;
+                UPDATE Students
+                SET name = ?,
+                    branch = ?,
+                    year = ?,
+                    cgpa = ?,
+                    email = ?,
+                    resume_url = ?
+                WHERE student_id = ?
+                """;
 
         try (PreparedStatement statement =
                      connection.prepareStatement(sql)) {
 
-            statement.setString(1, name);
-            statement.setString(2, branch);
-            statement.setInt(3, year);
-            statement.setDouble(4, cgpa);
-            statement.setString(5, email);
-            statement.setString(6, resumeUrl);
-            statement.setInt(7, studentId);
+            statement.setString(1, student.getName());
+            statement.setString(2, student.getBranch());
+            statement.setInt(3, student.getYear());
+            statement.setDouble(4, student.getCgpa());
+            statement.setString(5, student.getEmail());
+            statement.setString(6, student.getResumeUrl());
+            statement.setInt(7, student.getStudentId());
 
             int rowsUpdated = statement.executeUpdate();
 
@@ -229,4 +201,17 @@ public class StudentDAO {
         }
     }
 
+    // Turns the current ResultSet row into a Student
+    private Student mapStudent(ResultSet result) throws SQLException {
+
+        return new Student(
+                result.getInt("student_id"),
+                result.getString("name"),
+                result.getString("branch"),
+                result.getInt("year"),
+                result.getDouble("cgpa"),
+                result.getString("email"),
+                result.getString("resume_url")
+        );
+    }
 }

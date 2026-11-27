@@ -1,13 +1,13 @@
-
 package com.skillsynch.dao;
+
+import com.skillsynch.model.Eligibility;
+import com.skillsynch.model.EligibilityStatus;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class EligibilityDAO {
 
@@ -75,16 +75,16 @@ public class EligibilityDAO {
                 ? 0
                 : (matchedSkills * 100.0 / totalSkills);
 
-        String eligibilityStatus;
+        EligibilityStatus eligibilityStatus;
 
         if (cgpa < minCgpa) {
-            eligibilityStatus = "Not Eligible";
+            eligibilityStatus = EligibilityStatus.NOT_ELIGIBLE;
         } else if (matchPercentage >= 70) {
-            eligibilityStatus = "Eligible";
+            eligibilityStatus = EligibilityStatus.ELIGIBLE;
         } else if (matchPercentage >= 40) {
-            eligibilityStatus = "Partially Eligible";
+            eligibilityStatus = EligibilityStatus.PARTIALLY_ELIGIBLE;
         } else {
-            eligibilityStatus = "Not Eligible";
+            eligibilityStatus = EligibilityStatus.NOT_ELIGIBLE;
         }
 
         // Save or update eligibility
@@ -101,18 +101,19 @@ public class EligibilityDAO {
             ps.setInt(1, studentId);
             ps.setInt(2, internId);
             ps.setDouble(3, matchPercentage);
-            ps.setString(4, eligibilityStatus);
+            ps.setString(4, eligibilityStatus.getLabel());
             ps.executeUpdate();
         }
     }
 
-    public List<Map<String, Object>> getStudentEligibility(
+    // Company name and role are filled in from the internships table
+    public List<Eligibility> getStudentEligibility(
             Connection connection,
             int studentId
     ) throws Exception {
 
         String sql = """
-            SELECT e.intern_id, e.match_percentage,
+            SELECT e.student_id, e.intern_id, e.match_percentage,
                    e.eligibility_status,
                    i.company_name, i.role
             FROM eligibility e
@@ -121,22 +122,24 @@ public class EligibilityDAO {
             ORDER BY e.match_percentage DESC
             """;
 
-        List<Map<String, Object>> results = new ArrayList<>();
+        List<Eligibility> results = new ArrayList<>();
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, studentId);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Map<String, Object> row = new HashMap<>();
+                    Eligibility eligibility = new Eligibility(
+                            rs.getInt("student_id"),
+                            rs.getInt("intern_id"),
+                            rs.getDouble("match_percentage"),
+                            EligibilityStatus.fromLabel(rs.getString("eligibility_status"))
+                    );
 
-                    row.put("intern_id", rs.getInt("intern_id"));
-                    row.put("match_percentage", rs.getDouble("match_percentage"));
-                    row.put("eligibility_status", rs.getString("eligibility_status"));
-                    row.put("company_name", rs.getString("company_name"));
-                    row.put("role", rs.getString("role"));
+                    eligibility.setCompanyName(rs.getString("company_name"));
+                    eligibility.setRole(rs.getString("role"));
 
-                    results.add(row);
+                    results.add(eligibility);
                 }
             }
         }

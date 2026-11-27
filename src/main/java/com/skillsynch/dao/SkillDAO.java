@@ -1,16 +1,18 @@
 package com.skillsynch.dao;
+
+import com.skillsynch.model.Skill;
+import com.skillsynch.model.StudentSkill;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class SkillDAO {
 
     // 1. GET ALL AVAILABLE SKILLS
-    public List<Map<String, Object>> getAllSkills(
+    public List<Skill> getAllSkills(
             Connection connection
     ) throws Exception {
 
@@ -20,7 +22,7 @@ public class SkillDAO {
                 ORDER BY skill_name
                 """;
 
-        List<Map<String, Object>> skills = new ArrayList<>();
+        List<Skill> skills = new ArrayList<>();
 
         try (PreparedStatement statement =
                      connection.prepareStatement(sql);
@@ -29,33 +31,27 @@ public class SkillDAO {
 
             while (result.next()) {
 
-                Map<String, Object> skill = new HashMap<>();
-
-                skill.put("skill_id",
-                        result.getInt("skill_id"));
-
-                skill.put("skill_name",
-                        result.getString("skill_name"));
-
-                skill.put("category",
-                        result.getString("category"));
-
-                skills.add(skill);
+                skills.add(new Skill(
+                        result.getInt("skill_id"),
+                        result.getString("skill_name"),
+                        result.getString("category")
+                ));
             }
         }
 
         return skills;
     }
 
-
     // 2. GET SKILLS BELONGING TO A PARTICULAR STUDENT
-    public List<Map<String, Object>> getStudentSkills(
+    // (skill name and category are filled in from the Skills table)
+    public List<StudentSkill> getStudentSkills(
             Connection connection,
             int studentId
     ) throws Exception {
 
         String sql = """
-                SELECT s.skill_id,
+                SELECT ss.student_id,
+                       s.skill_id,
                        s.skill_name,
                        s.category,
                        ss.proficiency_level
@@ -66,7 +62,7 @@ public class SkillDAO {
                 ORDER BY s.skill_name
                 """;
 
-        List<Map<String, Object>> skills = new ArrayList<>();
+        List<StudentSkill> skills = new ArrayList<>();
 
         try (PreparedStatement statement =
                      connection.prepareStatement(sql)) {
@@ -77,19 +73,14 @@ public class SkillDAO {
 
                 while (result.next()) {
 
-                    Map<String, Object> skill = new HashMap<>();
+                    StudentSkill skill = new StudentSkill(
+                            result.getInt("student_id"),
+                            result.getInt("skill_id"),
+                            result.getInt("proficiency_level")
+                    );
 
-                    skill.put("skill_id",
-                            result.getInt("skill_id"));
-
-                    skill.put("skill_name",
-                            result.getString("skill_name"));
-
-                    skill.put("category",
-                            result.getString("category"));
-
-                    skill.put("proficiency_level",
-                            result.getInt("proficiency_level"));
+                    skill.setSkillName(result.getString("skill_name"));
+                    skill.setCategory(result.getString("category"));
 
                     skills.add(skill);
                 }
@@ -98,7 +89,6 @@ public class SkillDAO {
 
         return skills;
     }
-
 
     // 3. ADD A SKILL TO A STUDENT
     public void addStudentSkill(
@@ -130,6 +120,7 @@ public class SkillDAO {
             statement.executeUpdate();
         }
     }
+
     public void addSkill(Connection conn, String skillName, String category)
             throws Exception {
 

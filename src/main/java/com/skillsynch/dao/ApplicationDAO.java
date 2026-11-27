@@ -1,12 +1,17 @@
-
 package com.skillsynch.dao;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.ArrayList;
-import java.sql.ResultSet;
+
+import com.skillsynch.model.Application;
+import com.skillsynch.model.ApplicationStats;
+import com.skillsynch.model.ApplicationStatus;
+import com.skillsynch.model.Offer;
+import com.skillsynch.model.OfferStatus;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ApplicationDAO {
 
@@ -44,6 +49,7 @@ public class ApplicationDAO {
 
         return true;
     }
+
     public boolean hasApplied(
             Connection connection,
             int studentId,
@@ -51,10 +57,10 @@ public class ApplicationDAO {
     ) throws Exception {
 
         String sql = """
-        SELECT application_id
-        FROM applications
-        WHERE student_id = ? AND intern_id = ?
-        """;
+            SELECT application_id
+            FROM applications
+            WHERE student_id = ? AND intern_id = ?
+            """;
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, studentId);
@@ -64,40 +70,38 @@ public class ApplicationDAO {
         }
     }
 
-    public List<Map<String, Object>> getStudentApplications(
+    // STUDENT: MY APPLICATIONS (company name and role are filled in)
+    public List<Application> getStudentApplications(
             Connection connection,
             int studentId
     ) throws Exception {
 
         String sql = """
-        SELECT
-            a.application_id,
-            a.intern_id,
-            a.status,
-            a.application_date,
-            i.company_name,
-            i.role
-        FROM applications a
-        JOIN internships i ON a.intern_id = i.intern_id
-        WHERE a.student_id = ?
-        ORDER BY a.application_date DESC
-        """;
+            SELECT
+                a.application_id,
+                a.student_id,
+                a.intern_id,
+                a.status,
+                a.application_date,
+                i.company_name,
+                i.role
+            FROM applications a
+            JOIN internships i ON a.intern_id = i.intern_id
+            WHERE a.student_id = ?
+            ORDER BY a.application_date DESC
+            """;
 
-        List<Map<String, Object>> applications = new ArrayList<>();
+        List<Application> applications = new ArrayList<>();
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, studentId);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Map<String, Object> application = new HashMap<>();
+                    Application application = mapApplication(rs);
 
-                    application.put("application_id", rs.getInt("application_id"));
-                    application.put("intern_id", rs.getInt("intern_id"));
-                    application.put("status", rs.getString("status"));
-                    application.put("application_date", rs.getTimestamp("application_date"));
-                    application.put("company_name", rs.getString("company_name"));
-                    application.put("role", rs.getString("role"));
+                    application.setCompanyName(rs.getString("company_name"));
+                    application.setRole(rs.getString("role"));
 
                     applications.add(application);
                 }
@@ -106,31 +110,33 @@ public class ApplicationDAO {
 
         return applications;
     }
-    public List<Map<String, Object>> getCompanyApplications(
+
+    // COMPANY: APPLICATIONS TO THIS COMPANY'S INTERNSHIPS
+    public List<Application> getCompanyApplications(
             Connection connection,
             int companyId
     ) throws Exception {
 
         String sql = """
-        SELECT
-            a.application_id,
-            a.student_id,
-            a.intern_id,
-            a.status,
-            a.application_date,
-            s.name AS student_name,
-            s.email,
-            s.branch,
-            s.cgpa,
-            i.role
-        FROM applications a
-        JOIN students s ON a.student_id = s.student_id
-        JOIN internships i ON a.intern_id = i.intern_id
-        WHERE i.company_id = ?
-        ORDER BY a.application_date DESC
-        """;
+            SELECT
+                a.application_id,
+                a.student_id,
+                a.intern_id,
+                a.status,
+                a.application_date,
+                s.name AS student_name,
+                s.email,
+                s.branch,
+                s.cgpa,
+                i.role
+            FROM applications a
+            JOIN students s ON a.student_id = s.student_id
+            JOIN internships i ON a.intern_id = i.intern_id
+            WHERE i.company_id = ?
+            ORDER BY a.application_date DESC
+            """;
 
-        List<Map<String, Object>> applications = new ArrayList<>();
+        List<Application> applications = new ArrayList<>();
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
 
@@ -139,19 +145,9 @@ public class ApplicationDAO {
             try (ResultSet rs = ps.executeQuery()) {
 
                 while (rs.next()) {
-
-                    Map<String, Object> application = new HashMap<>();
-
-                    application.put("application_id", rs.getInt("application_id"));
-                    application.put("student_id", rs.getInt("student_id"));
-                    application.put("intern_id", rs.getInt("intern_id"));
-                    application.put("status", rs.getString("status"));
-                    application.put("application_date", rs.getTimestamp("application_date"));
-                    application.put("student_name", rs.getString("student_name"));
-                    application.put("email", rs.getString("email"));
-                    application.put("branch", rs.getString("branch"));
-                    application.put("cgpa", rs.getDouble("cgpa"));
-                    application.put("role", rs.getString("role"));
+                    Application application = mapApplication(rs);
+                    fillStudentDetails(application, rs);
+                    application.setRole(rs.getString("role"));
 
                     applications.add(application);
                 }
@@ -160,29 +156,34 @@ public class ApplicationDAO {
 
         return applications;
     }
+
     public void updateApplicationStatus(
             Connection connection,
             int applicationId,
             int companyId,
-            String status
+            ApplicationStatus status
     ) throws Exception {
 
-        if (!List.of("Shortlisted", "Interview", "Selected", "Rejected")
-                .contains(status)) {
+        if (status == null || !List.of(
+                ApplicationStatus.SHORTLISTED,
+                ApplicationStatus.INTERVIEW,
+                ApplicationStatus.SELECTED,
+                ApplicationStatus.REJECTED
+        ).contains(status)) {
             throw new IllegalArgumentException("Invalid application status.");
         }
 
         String sql = """
-        UPDATE applications a
-        JOIN internships i ON a.intern_id = i.intern_id
-        SET a.status = ?
-        WHERE a.application_id = ?
-        AND i.company_id = ?
-        """;
+            UPDATE applications a
+            JOIN internships i ON a.intern_id = i.intern_id
+            SET a.status = ?
+            WHERE a.application_id = ?
+            AND i.company_id = ?
+            """;
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            ps.setString(1, status);
+            ps.setString(1, status.getLabel());
             ps.setInt(2, applicationId);
             ps.setInt(3, companyId);
 
@@ -191,31 +192,34 @@ public class ApplicationDAO {
             }
         }
     }
-    public List<Map<String, Object>> getShortlistedStudents(
+
+    // COMPANY: SHORTLISTED / INTERVIEW / SELECTED STUDENTS
+    public List<Application> getShortlistedStudents(
             Connection connection,
             int companyId
     ) throws Exception {
 
         String sql = """
-        SELECT
-            a.application_id,
-            a.student_id,
-            a.status,
-            a.application_date,
-            s.name AS student_name,
-            s.email,
-            s.branch,
-            s.cgpa,
-            i.role
-        FROM applications a
-        JOIN students s ON a.student_id = s.student_id
-        JOIN internships i ON a.intern_id = i.intern_id
-        WHERE i.company_id = ?
-        AND a.status IN ('Shortlisted', 'Interview', 'Selected')
-        ORDER BY a.application_date DESC
-        """;
+            SELECT
+                a.application_id,
+                a.student_id,
+                a.intern_id,
+                a.status,
+                a.application_date,
+                s.name AS student_name,
+                s.email,
+                s.branch,
+                s.cgpa,
+                i.role
+            FROM applications a
+            JOIN students s ON a.student_id = s.student_id
+            JOIN internships i ON a.intern_id = i.intern_id
+            WHERE i.company_id = ?
+            AND a.status IN ('Shortlisted', 'Interview', 'Selected')
+            ORDER BY a.application_date DESC
+            """;
 
-        List<Map<String, Object>> students = new ArrayList<>();
+        List<Application> students = new ArrayList<>();
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
 
@@ -224,69 +228,52 @@ public class ApplicationDAO {
             try (ResultSet rs = ps.executeQuery()) {
 
                 while (rs.next()) {
+                    Application application = mapApplication(rs);
+                    fillStudentDetails(application, rs);
+                    application.setRole(rs.getString("role"));
 
-                    Map<String, Object> student = new HashMap<>();
-
-                    student.put("application_id", rs.getInt("application_id"));
-                    student.put("student_id", rs.getInt("student_id"));
-                    student.put("status", rs.getString("status"));
-                    student.put("application_date", rs.getTimestamp("application_date"));
-                    student.put("student_name", rs.getString("student_name"));
-                    student.put("email", rs.getString("email"));
-                    student.put("branch", rs.getString("branch"));
-                    student.put("cgpa", rs.getDouble("cgpa"));
-                    student.put("role", rs.getString("role"));
-
-                    students.add(student);
+                    students.add(application);
                 }
             }
         }
 
         return students;
     }
-    public List<Map<String, Object>> getAllApplications(
+
+    // ADMIN: ALL APPLICATIONS
+    public List<Application> getAllApplications(
             Connection connection
     ) throws Exception {
 
         String sql = """
-        SELECT
-            a.application_id,
-            a.student_id,
-            a.intern_id,
-            a.status,
-            a.application_date,
-            s.name AS student_name,
-            s.email,
-            s.branch,
-            s.cgpa,
-            i.company_name,
-            i.role
-        FROM applications a
-        JOIN students s ON a.student_id = s.student_id
-        JOIN internships i ON a.intern_id = i.intern_id
-        ORDER BY a.application_date DESC
-        """;
+            SELECT
+                a.application_id,
+                a.student_id,
+                a.intern_id,
+                a.status,
+                a.application_date,
+                s.name AS student_name,
+                s.email,
+                s.branch,
+                s.cgpa,
+                i.company_name,
+                i.role
+            FROM applications a
+            JOIN students s ON a.student_id = s.student_id
+            JOIN internships i ON a.intern_id = i.intern_id
+            ORDER BY a.application_date DESC
+            """;
 
-        List<Map<String, Object>> applications = new ArrayList<>();
+        List<Application> applications = new ArrayList<>();
 
         try (PreparedStatement ps = connection.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-
-                Map<String, Object> application = new HashMap<>();
-
-                application.put("application_id", rs.getInt("application_id"));
-                application.put("student_id", rs.getInt("student_id"));
-                application.put("intern_id", rs.getInt("intern_id"));
-                application.put("status", rs.getString("status"));
-                application.put("application_date", rs.getTimestamp("application_date"));
-                application.put("student_name", rs.getString("student_name"));
-                application.put("email", rs.getString("email"));
-                application.put("branch", rs.getString("branch"));
-                application.put("cgpa", rs.getDouble("cgpa"));
-                application.put("company_name", rs.getString("company_name"));
-                application.put("role", rs.getString("role"));
+                Application application = mapApplication(rs);
+                fillStudentDetails(application, rs);
+                application.setCompanyName(rs.getString("company_name"));
+                application.setRole(rs.getString("role"));
 
                 applications.add(application);
             }
@@ -294,46 +281,38 @@ public class ApplicationDAO {
 
         return applications;
     }
-    public Map<String, Integer> getApplicationStatistics(
+
+    public ApplicationStats getApplicationStatistics(
             Connection connection
     ) throws Exception {
 
         String sql = """
-        SELECT
-            COUNT(*) AS total_applications,
-            SUM(CASE WHEN status = 'Selected' THEN 1 ELSE 0 END) AS selected,
-            SUM(CASE WHEN status = 'Shortlisted' THEN 1 ELSE 0 END) AS shortlisted,
-            SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) AS rejected,
-            SUM(CASE WHEN status = 'Offer Extended' THEN 1 ELSE 0 END) AS offers_extended
-        FROM applications
-        """;
-
-        Map<String, Integer> statistics = new HashMap<>();
+            SELECT
+                COUNT(*) AS total_applications,
+                SUM(CASE WHEN status = 'Selected' THEN 1 ELSE 0 END) AS selected,
+                SUM(CASE WHEN status = 'Shortlisted' THEN 1 ELSE 0 END) AS shortlisted,
+                SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) AS rejected,
+                SUM(CASE WHEN status = 'Offer Extended' THEN 1 ELSE 0 END) AS offers_extended
+            FROM applications
+            """;
 
         try (PreparedStatement ps = connection.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
             if (rs.next()) {
-
-                statistics.put("total_applications",
-                        rs.getInt("total_applications"));
-
-                statistics.put("selected",
-                        rs.getInt("selected"));
-
-                statistics.put("shortlisted",
-                        rs.getInt("shortlisted"));
-
-                statistics.put("rejected",
-                        rs.getInt("rejected"));
-
-                statistics.put("offers_extended",
-                        rs.getInt("offers_extended"));
+                return new ApplicationStats(
+                        rs.getInt("total_applications"),
+                        rs.getInt("selected"),
+                        rs.getInt("shortlisted"),
+                        rs.getInt("rejected"),
+                        rs.getInt("offers_extended")
+                );
             }
         }
 
-        return statistics;
+        return new ApplicationStats(0, 0, 0, 0, 0);
     }
+
     public boolean createOffer(
             Connection connection,
             int applicationId,
@@ -342,16 +321,15 @@ public class ApplicationDAO {
     ) throws Exception {
 
         String checkSql = """
-        SELECT a.application_id
-        FROM applications a
-        JOIN internships i ON a.intern_id = i.intern_id
-        WHERE a.application_id = ?
-        AND i.company_id = ?
-        AND a.status = 'Selected'
-        """;
+            SELECT a.application_id
+            FROM applications a
+            JOIN internships i ON a.intern_id = i.intern_id
+            WHERE a.application_id = ?
+            AND i.company_id = ?
+            AND a.status = 'Selected'
+            """;
 
-        try (PreparedStatement check =
-                     connection.prepareStatement(checkSql)) {
+        try (PreparedStatement check = connection.prepareStatement(checkSql)) {
 
             check.setInt(1, applicationId);
             check.setInt(2, companyId);
@@ -364,16 +342,15 @@ public class ApplicationDAO {
         }
 
         String insertSql = """
-        INSERT INTO offers (
-            application_id,
-            joining_date,
-            status
-        )
-        VALUES (?, ?, 'Pending')
-        """;
+            INSERT INTO offers (
+                application_id,
+                joining_date,
+                status
+            )
+            VALUES (?, ?, 'Pending')
+            """;
 
-        try (PreparedStatement ps =
-                     connection.prepareStatement(insertSql)) {
+        try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
 
             ps.setInt(1, applicationId);
             ps.setDate(2, joiningDate);
@@ -381,30 +358,32 @@ public class ApplicationDAO {
             return ps.executeUpdate() > 0;
         }
     }
-    public List<Map<String, Object>> getCompanyOffers(
+
+    // COMPANY: OFFERS (student name, email and role are filled in)
+    public List<Offer> getCompanyOffers(
             Connection connection,
             int companyId
     ) throws Exception {
 
         String sql = """
-        SELECT
-            o.offer_id,
-            o.application_id,
-            o.offer_date,
-            o.joining_date,
-            o.status,
-            s.name AS student_name,
-            s.email,
-            i.role
-        FROM offers o
-        JOIN applications a ON o.application_id = a.application_id
-        JOIN students s ON a.student_id = s.student_id
-        JOIN internships i ON a.intern_id = i.intern_id
-        WHERE i.company_id = ?
-        ORDER BY o.offer_date DESC
-        """;
+            SELECT
+                o.offer_id,
+                o.application_id,
+                o.offer_date,
+                o.joining_date,
+                o.status,
+                s.name AS student_name,
+                s.email,
+                i.role
+            FROM offers o
+            JOIN applications a ON o.application_id = a.application_id
+            JOIN students s ON a.student_id = s.student_id
+            JOIN internships i ON a.intern_id = i.intern_id
+            WHERE i.company_id = ?
+            ORDER BY o.offer_date DESC
+            """;
 
-        List<Map<String, Object>> offers = new ArrayList<>();
+        List<Offer> offers = new ArrayList<>();
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
 
@@ -413,17 +392,11 @@ public class ApplicationDAO {
             try (ResultSet rs = ps.executeQuery()) {
 
                 while (rs.next()) {
+                    Offer offer = mapOffer(rs);
 
-                    Map<String, Object> offer = new HashMap<>();
-
-                    offer.put("offer_id", rs.getInt("offer_id"));
-                    offer.put("application_id", rs.getInt("application_id"));
-                    offer.put("offer_date", rs.getTimestamp("offer_date"));
-                    offer.put("joining_date", rs.getDate("joining_date"));
-                    offer.put("status", rs.getString("status"));
-                    offer.put("student_name", rs.getString("student_name"));
-                    offer.put("email", rs.getString("email"));
-                    offer.put("role", rs.getString("role"));
+                    offer.setStudentName(rs.getString("student_name"));
+                    offer.setStudentEmail(rs.getString("email"));
+                    offer.setRole(rs.getString("role"));
 
                     offers.add(offer);
                 }
@@ -432,28 +405,30 @@ public class ApplicationDAO {
 
         return offers;
     }
-    public List<Map<String, Object>> getStudentOffers(
+
+    // STUDENT: OFFERS (company name and role are filled in)
+    public List<Offer> getStudentOffers(
             Connection connection,
             int studentId
     ) throws Exception {
 
         String sql = """
-        SELECT
-            o.offer_id,
-            o.application_id,
-            o.offer_date,
-            o.joining_date,
-            o.status,
-            i.company_name,
-            i.role
-        FROM offers o
-        JOIN applications a ON o.application_id = a.application_id
-        JOIN internships i ON a.intern_id = i.intern_id
-        WHERE a.student_id = ?
-        ORDER BY o.offer_date DESC
-        """;
+            SELECT
+                o.offer_id,
+                o.application_id,
+                o.offer_date,
+                o.joining_date,
+                o.status,
+                i.company_name,
+                i.role
+            FROM offers o
+            JOIN applications a ON o.application_id = a.application_id
+            JOIN internships i ON a.intern_id = i.intern_id
+            WHERE a.student_id = ?
+            ORDER BY o.offer_date DESC
+            """;
 
-        List<Map<String, Object>> offers = new ArrayList<>();
+        List<Offer> offers = new ArrayList<>();
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
 
@@ -462,16 +437,10 @@ public class ApplicationDAO {
             try (ResultSet rs = ps.executeQuery()) {
 
                 while (rs.next()) {
+                    Offer offer = mapOffer(rs);
 
-                    Map<String, Object> offer = new HashMap<>();
-
-                    offer.put("offer_id", rs.getInt("offer_id"));
-                    offer.put("application_id", rs.getInt("application_id"));
-                    offer.put("offer_date", rs.getTimestamp("offer_date"));
-                    offer.put("joining_date", rs.getDate("joining_date"));
-                    offer.put("status", rs.getString("status"));
-                    offer.put("company_name", rs.getString("company_name"));
-                    offer.put("role", rs.getString("role"));
+                    offer.setCompanyName(rs.getString("company_name"));
+                    offer.setRole(rs.getString("role"));
 
                     offers.add(offer);
                 }
@@ -480,30 +449,31 @@ public class ApplicationDAO {
 
         return offers;
     }
+
     public void updateOfferStatus(
             Connection connection,
             int offerId,
             int studentId,
-            String status
+            OfferStatus status
     ) throws Exception {
 
-        if (!List.of("Accepted", "Rejected").contains(status)) {
+        if (status != OfferStatus.ACCEPTED && status != OfferStatus.REJECTED) {
             throw new IllegalArgumentException("Invalid offer status.");
         }
 
         String sql = """
-        UPDATE offers o
-        JOIN applications a
-            ON o.application_id = a.application_id
-        SET o.status = ?
-        WHERE o.offer_id = ?
-        AND a.student_id = ?
-        AND o.status = 'Pending'
-        """;
+            UPDATE offers o
+            JOIN applications a
+                ON o.application_id = a.application_id
+            SET o.status = ?
+            WHERE o.offer_id = ?
+            AND a.student_id = ?
+            AND o.status = 'Pending'
+            """;
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            ps.setString(1, status);
+            ps.setString(1, status.getLabel());
             ps.setInt(2, offerId);
             ps.setInt(3, studentId);
 
@@ -513,5 +483,39 @@ public class ApplicationDAO {
                 );
             }
         }
+    }
+
+    // ---------------------------------------------------------
+    // Row mappers
+    // ---------------------------------------------------------
+
+    // Reads the columns that belong to the applications table itself
+    private Application mapApplication(ResultSet rs) throws SQLException {
+        return new Application(
+                rs.getInt("application_id"),
+                rs.getInt("student_id"),
+                rs.getInt("intern_id"),
+                ApplicationStatus.fromLabel(rs.getString("status")),
+                DaoUtil.toLocalDateTime(rs.getTimestamp("application_date"))
+        );
+    }
+
+    // Reads the student columns from a JOIN with the students table
+    private void fillStudentDetails(Application application, ResultSet rs) throws SQLException {
+        application.setStudentName(rs.getString("student_name"));
+        application.setStudentEmail(rs.getString("email"));
+        application.setBranch(rs.getString("branch"));
+        application.setCgpa(DaoUtil.getNullableDouble(rs, "cgpa"));
+    }
+
+    // Reads the columns that belong to the offers table itself
+    private Offer mapOffer(ResultSet rs) throws SQLException {
+        return new Offer(
+                rs.getInt("offer_id"),
+                rs.getInt("application_id"),
+                DaoUtil.toLocalDateTime(rs.getTimestamp("offer_date")),
+                DaoUtil.toLocalDate(rs.getDate("joining_date")),
+                OfferStatus.fromLabel(rs.getString("status"))
+        );
     }
 }

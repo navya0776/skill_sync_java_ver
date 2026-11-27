@@ -35,7 +35,7 @@ public class RegistrationService {
             );
         }
 
-        if (year < 1 || year > 6) {
+        if (year < 1 || year > 4) {
             throw new IllegalArgumentException(
                     "Invalid academic year."
             );

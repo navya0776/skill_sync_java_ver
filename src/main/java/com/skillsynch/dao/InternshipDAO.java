@@ -1,13 +1,16 @@
-
 package com.skillsynch.dao;
+
+import com.skillsynch.model.Internship;
+import com.skillsynch.model.InternshipStatus;
+
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.Date;
-import java.sql.ResultSet;
 
 public class InternshipDAO {
 
@@ -41,7 +44,7 @@ public class InternshipDAO {
             statement.setDouble(5, minCgpa);
             statement.setInt(6, numberOfPositions);
             statement.setDate(7, applicationDeadline);
-            statement.setString(8, "Pending");
+            statement.setString(8, InternshipStatus.PENDING.getLabel());
 
             statement.executeUpdate();
 
@@ -58,14 +61,10 @@ public class InternshipDAO {
     public void updateInternshipStatus(
             Connection connection,
             int internshipId,
-            String status
+            InternshipStatus status
     ) throws Exception {
 
-        if (!status.equals("Approved") &&
-                !status.equals("Rejected") &&
-                !status.equals("Published") &&
-                !status.equals("Closed")) {
-
+        if (status == null || status == InternshipStatus.PENDING) {
             throw new IllegalArgumentException("Invalid internship status.");
         }
 
@@ -78,7 +77,7 @@ public class InternshipDAO {
         try (PreparedStatement statement =
                      connection.prepareStatement(sql)) {
 
-            statement.setString(1, status);
+            statement.setString(1, status.getLabel());
             statement.setInt(2, internshipId);
 
             int rowsUpdated = statement.executeUpdate();
@@ -89,7 +88,7 @@ public class InternshipDAO {
         }
     }
 
-    public List<Map<String, Object>> getAllInternships(
+    public List<Internship> getAllInternships(
             Connection connection
     ) throws Exception {
 
@@ -101,34 +100,20 @@ public class InternshipDAO {
             ORDER BY intern_id DESC
             """;
 
-        List<Map<String, Object>> internships = new ArrayList<>();
+        List<Internship> internships = new ArrayList<>();
 
         try (PreparedStatement statement =
                      connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
 
             while (resultSet.next()) {
-
-                Map<String, Object> internship = new HashMap<>();
-
-                internship.put("intern_id", resultSet.getInt("intern_id"));
-                internship.put("company_id", resultSet.getInt("company_id"));
-                internship.put("company_name", resultSet.getString("company_name"));
-                internship.put("role", resultSet.getString("role"));
-                internship.put("description", resultSet.getString("description"));
-                internship.put("min_cgpa", resultSet.getDouble("min_cgpa"));
-                internship.put("number_of_positions",
-                        resultSet.getInt("number_of_positions"));
-                internship.put("application_deadline",
-                        resultSet.getDate("application_deadline"));
-                internship.put("status", resultSet.getString("status"));
-
-                internships.add(internship);
+                internships.add(mapInternship(resultSet));
             }
         }
 
         return internships;
     }
+
     public void addInternshipSkill(
             Connection connection,
             int internshipId,
@@ -158,6 +143,7 @@ public class InternshipDAO {
             statement.executeUpdate();
         }
     }
+
     public void addRequiredSkills(
             Connection connection,
             int internshipId,
@@ -193,21 +179,22 @@ public class InternshipDAO {
             statement.executeBatch();
         }
     }
-    public List<Map<String, Object>> getCompanyInternships(
+
+    public List<Internship> getCompanyInternships(
             Connection connection,
             int companyId
     ) throws Exception {
 
         String sql = """
-        SELECT intern_id, company_id, company_name, role,
-               description, min_cgpa, number_of_positions,
-               application_deadline, status
-        FROM Internships
-        WHERE company_id = ?
-        ORDER BY intern_id DESC
-        """;
+            SELECT intern_id, company_id, company_name, role,
+                   description, min_cgpa, number_of_positions,
+                   application_deadline, status
+            FROM Internships
+            WHERE company_id = ?
+            ORDER BY intern_id DESC
+            """;
 
-        List<Map<String, Object>> internships = new ArrayList<>();
+        List<Internship> internships = new ArrayList<>();
 
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
 
@@ -216,26 +203,27 @@ public class InternshipDAO {
             try (ResultSet resultSet = statement.executeQuery()) {
 
                 while (resultSet.next()) {
-
-                    Map<String, Object> internship = new HashMap<>();
-
-                    internship.put("intern_id", resultSet.getInt("intern_id"));
-                    internship.put("company_id", resultSet.getInt("company_id"));
-                    internship.put("company_name", resultSet.getString("company_name"));
-                    internship.put("role", resultSet.getString("role"));
-                    internship.put("description", resultSet.getString("description"));
-                    internship.put("min_cgpa", resultSet.getDouble("min_cgpa"));
-                    internship.put("number_of_positions",
-                            resultSet.getInt("number_of_positions"));
-                    internship.put("application_deadline",
-                            resultSet.getDate("application_deadline"));
-                    internship.put("status", resultSet.getString("status"));
-
-                    internships.add(internship);
+                    internships.add(mapInternship(resultSet));
                 }
             }
         }
 
         return internships;
+    }
+
+    // Turns the current ResultSet row into an Internship
+    private Internship mapInternship(ResultSet rs) throws SQLException {
+
+        return new Internship(
+                rs.getInt("intern_id"),
+                DaoUtil.getNullableInt(rs, "company_id"),
+                rs.getString("company_name"),
+                rs.getString("role"),
+                rs.getString("description"),
+                DaoUtil.getNullableDouble(rs, "min_cgpa"),
+                DaoUtil.getNullableInt(rs, "number_of_positions"),
+                DaoUtil.toLocalDate(rs.getDate("application_deadline")),
+                InternshipStatus.fromLabel(rs.getString("status"))
+        );
     }
 }

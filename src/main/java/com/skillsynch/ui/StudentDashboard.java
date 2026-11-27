@@ -1,30 +1,24 @@
 package com.skillsynch.ui;
-import com.skillsynch.dao.ApplicationDAO;
-import com.skillsynch.dao.InternshipDAO;
-import com.skillsynch.dao.EligibilityDAO;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import javafx.stage.FileChooser;
-import java.io.File;
-import com.skillsynch.dao.SkillDAO;
-import javafx.collections.FXCollections;
-import com.skillsynch.config.DatabaseConfig;
-import com.skillsynch.dao.StudentDAO;
 
+import com.skillsynch.service.StudentService;
+
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 
-import java.sql.Connection;
+import java.io.File;
 import java.util.*;
 
 public class StudentDashboard {
 
     private final BorderPane root = new BorderPane();
     private final VBox content = new VBox(20);
+
+    private final StudentService service = new StudentService();
 
     private int studentId;
 
@@ -84,18 +78,11 @@ public class StudentDashboard {
 
         // BUTTON ACTIONS
         dashboardBtn.setOnAction(e -> showDashboard());
-
         profileBtn.setOnAction(e -> showProfile());
-
         skillsBtn.setOnAction(e -> showSkills());
         offersBtn.setOnAction(e -> showMyOffers());
-        internshipsBtn.setOnAction(e -> {
-            System.out.println("INTERNSHIPS BUTTON CLICKED");
-            showInternships();
-        });
-
+        internshipsBtn.setOnAction(e -> showInternships());
         eligibilityBtn.setOnAction(e -> showEligibility());
-
         applicationsBtn.setOnAction(e -> showMyApplications());
         logoutBtn.setOnAction(e -> logout.run());
 
@@ -136,42 +123,19 @@ public class StudentDashboard {
                         "-fx-font-weight: bold;"
         );
 
-        Label welcome = new Label(
-                "Welcome to SkillSynch!"
-        );
+        Label welcome = new Label("Welcome to SkillSynch!");
 
-        welcome.setStyle(
-                "-fx-font-size: 18px;"
-        );
+        welcome.setStyle("-fx-font-size: 18px;");
 
         HBox cards = new HBox(20);
 
-        VBox card1 = createCard(
-                "Available Internships",
-                "0"
-        );
+        VBox card1 = createCard("Available Internships", "0");
+        VBox card2 = createCard("Applications", "0");
+        VBox card3 = createCard("Eligible Internships", "0");
 
-        VBox card2 = createCard(
-                "Applications",
-                "0"
-        );
+        cards.getChildren().addAll(card1, card2, card3);
 
-        VBox card3 = createCard(
-                "Eligible Internships",
-                "0"
-        );
-
-        cards.getChildren().addAll(
-                card1,
-                card2,
-                card3
-        );
-
-        content.getChildren().addAll(
-                heading,
-                welcome,
-                cards
-        );
+        content.getChildren().addAll(heading, welcome, cards);
     }
 
     // DASHBOARD CARDS
@@ -207,7 +171,7 @@ public class StudentDashboard {
         return card;
     }
 
-    // NEW FEATURE: DISPLAY STUDENT PROFILE
+    // MY PROFILE PAGE
     private void showProfile() {
 
         content.getChildren().clear();
@@ -215,12 +179,9 @@ public class StudentDashboard {
         Label heading = new Label("My Profile");
         heading.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
 
-        try (Connection connection = DatabaseConfig.getConnection()) {
+        try {
 
-            StudentDAO studentDAO = new StudentDAO();
-
-            Map<String, Object> student =
-                    studentDAO.getStudentById(connection, studentId);
+            Map<String, Object> student = service.getStudentProfile(studentId);
 
             if (student == null || student.isEmpty()) {
                 content.getChildren().add(
@@ -229,57 +190,32 @@ public class StudentDashboard {
                 return;
             }
 
-            TextField nameField = new TextField(
-                    String.valueOf(student.get("name"))
-            );
-
-            TextField emailField = new TextField(
-                    String.valueOf(student.get("email"))
-            );
-
-            TextField branchField = new TextField(
-                    String.valueOf(student.get("branch"))
-            );
-
-            TextField yearField = new TextField(
-                    String.valueOf(student.get("year"))
-            );
-
-            TextField cgpaField = new TextField(
-                    String.valueOf(student.get("cgpa"))
-            );
+            TextField nameField = new TextField(String.valueOf(student.get("name")));
+            TextField emailField = new TextField(String.valueOf(student.get("email")));
+            TextField branchField = new TextField(String.valueOf(student.get("branch")));
+            TextField yearField = new TextField(String.valueOf(student.get("year")));
+            TextField cgpaField = new TextField(String.valueOf(student.get("cgpa")));
 
             Object resumeValue = student.get("resume_url");
 
             TextField resumeField = new TextField(
                     resumeValue == null ? "" : String.valueOf(resumeValue)
             );
+
             final File[] selectedResume = {null};
             Label messageLabel = new Label();
+
             Button chooseResumeButton = new Button("Choose PDF");
             Button viewResumeButton = new Button("View Resume");
+            Button downloadResumeButton = new Button("Download Resume");
 
             viewResumeButton.setOnAction(event -> {
 
                 try {
 
-                    String resumePath;
+                    File resumeFile = findResumeFile(selectedResume[0], resumeValue, messageLabel);
 
-                    if (selectedResume[0] != null) {
-                        resumePath = selectedResume[0].getAbsolutePath();
-                    } else {
-                        resumePath = resumeValue == null ? "" : resumeValue.toString();
-                    }
-
-                    if (resumePath.isEmpty()) {
-                        messageLabel.setText("Please upload a resume first.");
-                        return;
-                    }
-
-                    File resumeFile = new File(resumePath);
-
-                    if (!resumeFile.exists()) {
-                        messageLabel.setText("Resume file not found.");
+                    if (resumeFile == null) {
                         return;
                     }
 
@@ -292,27 +228,14 @@ public class StudentDashboard {
                     );
                 }
             });
-            Button downloadResumeButton = new Button("Download Resume");
 
             downloadResumeButton.setOnAction(event -> {
+
                 try {
-                    String resumePath;
 
-                    if (selectedResume[0] != null) {
-                        resumePath = selectedResume[0].getAbsolutePath();
-                    } else {
-                        resumePath = resumeValue == null ? "" : resumeValue.toString();
-                    }
+                    File resumeFile = findResumeFile(selectedResume[0], resumeValue, messageLabel);
 
-                    if (resumePath.isEmpty()) {
-                        messageLabel.setText("Please upload a resume first.");
-                        return;
-                    }
-
-                    File resumeFile = new File(resumePath);
-
-                    if (!resumeFile.exists()) {
-                        messageLabel.setText("Resume file not found.");
+                    if (resumeFile == null) {
                         return;
                     }
 
@@ -326,12 +249,7 @@ public class StudentDashboard {
                     File destination = fileChooser.showSaveDialog(root.getScene().getWindow());
 
                     if (destination != null) {
-                        Files.copy(
-                                resumeFile.toPath(),
-                                destination.toPath(),
-                                StandardCopyOption.REPLACE_EXISTING
-                        );
-
+                        service.copyResume(resumeFile, destination);
                         messageLabel.setText("Resume downloaded successfully!");
                     }
 
@@ -339,6 +257,7 @@ public class StudentDashboard {
                     messageLabel.setText("Download failed: " + ex.getMessage());
                 }
             });
+
             chooseResumeButton.setOnAction(event -> {
 
                 FileChooser fileChooser = new FileChooser();
@@ -346,9 +265,7 @@ public class StudentDashboard {
                 fileChooser.setTitle("Select Your Resume");
 
                 fileChooser.getExtensionFilters().add(
-                        new FileChooser.ExtensionFilter(
-                                "PDF Files", "*.pdf"
-                        )
+                        new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
                 );
 
                 File file = fileChooser.showOpenDialog(root.getScene().getWindow());
@@ -358,6 +275,7 @@ public class StudentDashboard {
                     resumeField.setText(file.getName());
                 }
             });
+
             nameField.setPromptText("Enter your name");
             emailField.setPromptText("Enter your email");
             branchField.setPromptText("Enter your branch");
@@ -368,22 +286,21 @@ public class StudentDashboard {
             VBox form = new VBox(12);
 
             form.getChildren().addAll(
-                    createProfileLabel("Name", ""),
+                    createProfileLabel("Name"),
                     nameField,
-                    createProfileLabel("Email", ""),
+                    createProfileLabel("Email"),
                     emailField,
-                    createProfileLabel("Branch", ""),
+                    createProfileLabel("Branch"),
                     branchField,
-                    createProfileLabel("Year", ""),
+                    createProfileLabel("Year"),
                     yearField,
-                    createProfileLabel("CGPA", ""),
+                    createProfileLabel("CGPA"),
                     cgpaField,
-                    createProfileLabel("Resume", ""),
+                    createProfileLabel("Resume"),
                     resumeField,
                     chooseResumeButton,
                     viewResumeButton,
                     downloadResumeButton
-
             );
 
             Button saveButton = new Button("Save Changes");
@@ -393,102 +310,29 @@ public class StudentDashboard {
                             "-fx-font-weight: bold;"
             );
 
-
             saveButton.setOnAction(event -> {
 
                 try {
 
-                    String name = nameField.getText().trim();
-                    String email = emailField.getText().trim();
-                    String branch = branchField.getText().trim();
-                    String resumeUrl = resumeField.getText().trim();
-                    if (selectedResume[0] != null) {
-
-                        if (selectedResume[0] != null) {
-
-                            Path uploadDirectory = Path.of("uploads")
-                                    .toAbsolutePath();
-
-                            Files.createDirectories(uploadDirectory);
-
-                            String fileName = "student_" + studentId + "_resume.pdf";
-
-                            Path destination = uploadDirectory.resolve(fileName);
-
-                            Files.copy(
-                                    selectedResume[0].toPath(),
-                                    destination,
-                                    StandardCopyOption.REPLACE_EXISTING
-                            );
-
-                            resumeUrl = destination.toString();
-
-                            System.out.println("Original selected file: "
-                                    + selectedResume[0].getAbsolutePath());
-
-                            System.out.println("Copied file location: "
-                                    + destination);
-
-                            System.out.println("File successfully copied: "
-                                    + Files.exists(destination));
-                        }
-                    }
-                    if (name.isEmpty() || email.isEmpty()
-                            || branch.isEmpty()) {
-
-                        messageLabel.setText(
-                                "Please fill all required fields."
-                        );
-                        return;
-                    }
-
-                    if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
-                        messageLabel.setText("Enter a valid email.");
-                        return;
-                    }
-
-                    int year = Integer.parseInt(yearField.getText().trim());
-                    double cgpa = Double.parseDouble(cgpaField.getText().trim());
-
-                    if (year < 1 || year > 5) {
-                        messageLabel.setText(
-                                "Year must be between 1 and 5."
-                        );
-                        return;
-                    }
-
-                    if (cgpa < 0 || cgpa > 10) {
-                        messageLabel.setText(
-                                "CGPA must be between 0 and 10."
-                        );
-                        return;
-                    }
-
-                    try (Connection updateConnection =
-                                 DatabaseConfig.getConnection()) {
-
-                        studentDAO.updateStudent(
-                                updateConnection,
-                                studentId,
-                                name,
-                                branch,
-                                year,
-                                cgpa,
-                                email,
-                                resumeUrl
-                        );
-                    }
+                    service.updateProfile(
+                            studentId,
+                            nameField.getText(),
+                            emailField.getText(),
+                            branchField.getText(),
+                            yearField.getText(),
+                            cgpaField.getText(),
+                            resumeField.getText(),
+                            selectedResume[0]
+                    );
 
                     messageLabel.setText("Profile updated successfully!");
                     messageLabel.setStyle("-fx-text-fill: green;");
 
                     showProfile();
 
-                } catch (NumberFormatException ex) {
+                } catch (StudentService.ValidationException ex) {
 
-                    messageLabel.setText(
-                            "Year and CGPA must be valid numbers."
-                    );
+                    messageLabel.setText(ex.getMessage());
 
                 } catch (Exception ex) {
 
@@ -508,16 +352,9 @@ public class StudentDashboard {
                             "-fx-border-radius: 12;"
             );
 
-            profileCard.getChildren().addAll(
-                    form,
-                    saveButton,
-                    messageLabel
-            );
+            profileCard.getChildren().addAll(form, saveButton, messageLabel);
 
-            content.getChildren().addAll(
-                    heading,
-                    profileCard
-            );
+            content.getChildren().addAll(heading, profileCard);
 
         } catch (Exception e) {
 
@@ -526,6 +363,26 @@ public class StudentDashboard {
             );
             e.printStackTrace();
         }
+    }
+
+
+    private File findResumeFile(File selected, Object storedValue, Label messageLabel) {
+
+        String resumePath = service.resolveResumePath(selected, storedValue);
+
+        if (resumePath.isEmpty()) {
+            messageLabel.setText("Please upload a resume first.");
+            return null;
+        }
+
+        File resumeFile = new File(resumePath);
+
+        if (!resumeFile.exists()) {
+            messageLabel.setText("Resume file not found.");
+            return null;
+        }
+
+        return resumeFile;
     }
 
     // MY SKILLS PAGE
@@ -576,24 +433,13 @@ public class StudentDashboard {
 
         // MAPS TO CONNECT SKILL NAMES WITH DATABASE IDS
         Map<String, Integer> availableSkillIds = new HashMap<>();
-
         Map<String, Integer> savedSkillIds = new HashMap<>();
 
-        SkillDAO skillDAO = new SkillDAO();
+        // LOAD SKILLS
+        try {
 
-        // LOAD SKILLS FROM MYSQL
-        try (Connection connection = DatabaseConfig.getConnection()) {
-
-            // Get all available skills
-            List<Map<String, Object>> allSkills =
-                    skillDAO.getAllSkills(connection);
-
-            // Get skills belonging to logged-in student
-            List<Map<String, Object>> mySkills =
-                    skillDAO.getStudentSkills(
-                            connection,
-                            studentId
-                    );
+            List<Map<String, Object>> allSkills = service.getAllSkills();
+            List<Map<String, Object>> mySkills = service.getStudentSkills(studentId);
 
             Set<Integer> alreadyAddedIds = new HashSet<>();
 
@@ -603,11 +449,8 @@ public class StudentDashboard {
             for (Map<String, Object> skill : mySkills) {
 
                 int id = (Integer) skill.get("skill_id");
-
                 String name = (String) skill.get("skill_name");
-
                 String category = (String) skill.get("category");
-
                 int level = (Integer) skill.get("proficiency_level");
 
                 alreadyAddedIds.add(id);
@@ -618,7 +461,6 @@ public class StudentDashboard {
                                 " | Proficiency: " + level + "/5";
 
                 savedSkillNames.add(displayName);
-
                 savedSkillIds.put(displayName, id);
             }
 
@@ -632,13 +474,10 @@ public class StudentDashboard {
             for (Map<String, Object> skill : allSkills) {
 
                 int id = (Integer) skill.get("skill_id");
-
                 String name = (String) skill.get("skill_name");
 
                 if (!alreadyAddedIds.contains(id)) {
-
                     availableNames.add(name);
-
                     availableSkillIds.put(name, id);
                 }
             }
@@ -651,17 +490,10 @@ public class StudentDashboard {
 
             ex.printStackTrace();
 
-            Label error = new Label(
-                    "Unable to load skills from database."
-            );
-
+            Label error = new Label("Unable to load skills from database.");
             error.setStyle("-fx-text-fill: red;");
 
-            content.getChildren().addAll(
-                    heading,
-                    description,
-                    error
-            );
+            content.getChildren().addAll(heading, description, error);
 
             return;
         }
@@ -679,7 +511,6 @@ public class StudentDashboard {
         addButton.setOnAction(e -> {
 
             String selectedSkill = availableSkills.getValue();
-
             Integer selectedLevel = proficiencyBox.getValue();
 
             if (selectedSkill == null || selectedLevel == null) {
@@ -692,16 +523,11 @@ public class StudentDashboard {
                 return;
             }
 
-            try (Connection connection = DatabaseConfig.getConnection()) {
+            try {
 
                 int skillId = availableSkillIds.get(selectedSkill);
 
-                skillDAO.addStudentSkill(
-                        connection,
-                        studentId,
-                        skillId,
-                        selectedLevel
-                );
+                service.addStudentSkill(studentId, skillId, selectedLevel);
 
                 new Alert(
                         Alert.AlertType.INFORMATION,
@@ -734,8 +560,7 @@ public class StudentDashboard {
 
         removeButton.setOnAction(e -> {
 
-            String selectedSkill = savedSkillsList.getSelectionModel()
-                    .getSelectedItem();
+            String selectedSkill = savedSkillsList.getSelectionModel().getSelectedItem();
 
             if (selectedSkill == null) {
 
@@ -747,15 +572,11 @@ public class StudentDashboard {
                 return;
             }
 
-            try (Connection connection = DatabaseConfig.getConnection()) {
+            try {
 
                 int skillId = savedSkillIds.get(selectedSkill);
 
-                skillDAO.removeStudentSkill(
-                        connection,
-                        studentId,
-                        skillId
-                );
+                service.removeStudentSkill(studentId, skillId);
 
                 new Alert(
                         Alert.AlertType.INFORMATION,
@@ -789,11 +610,9 @@ public class StudentDashboard {
         );
 
         HBox selectionRow = new HBox(15);
-
         selectionRow.setAlignment(Pos.CENTER_LEFT);
 
         VBox skillBox = new VBox(8, availableLabel, availableSkills);
-
         VBox levelBox = new VBox(8, proficiencyLabel, proficiencyBox);
 
         selectionRow.getChildren().addAll(skillBox, levelBox);
@@ -832,10 +651,7 @@ public class StudentDashboard {
     }
 
     // PLACEHOLDER PAGES
-    private void showPage(
-            String title,
-            String description
-    ) {
+    private void showPage(String title, String description) {
 
         content.getChildren().clear();
 
@@ -853,13 +669,10 @@ public class StudentDashboard {
                         "-fx-text-fill: #64748B;"
         );
 
-        content.getChildren().addAll(
-                heading,
-                message
-        );
+        content.getChildren().addAll(heading, message);
     }
 
-    private Label createProfileLabel(String field, String value) {
+    private Label createProfileLabel(String field) {
         Label label = new Label(field);
         label.setStyle(
                 "-fx-font-size: 14px;" +
@@ -869,6 +682,7 @@ public class StudentDashboard {
         return label;
     }
 
+    // INTERNSHIPS PAGE
     private void showInternships() {
 
         content.getChildren().clear();
@@ -878,28 +692,12 @@ public class StudentDashboard {
 
         VBox internshipList = new VBox(15);
 
-        try (Connection connection = DatabaseConfig.getConnection()) {
+        try {
 
-            InternshipDAO dao = new InternshipDAO();
-
-            List<Map<String, Object>> internships =
-                    dao.getAllInternships(connection);
-
-            System.out.println("Total internships: " + internships.size());
+            // Service already returns only Approved / Published internships
+            List<Map<String, Object>> internships = service.getAvailableInternships();
 
             for (Map<String, Object> internship : internships) {
-                System.out.println("Role: " + internship.get("role")
-                        + " | Status: [" + internship.get("status") + "]");
-            }
-            for (Map<String, Object> internship : internships) {
-
-                String status = String.valueOf(internship.get("status"));
-
-                if (!status.equals("Approved") &&
-                        !status.equals("Published")) {
-                    continue;
-                }
-
 
                 Label details = new Label(
                         "Company: " + internship.get("company_name") +
@@ -917,18 +715,15 @@ public class StudentDashboard {
                                 "-fx-border-color: #cccccc;"
                 );
 
+                int internId = Integer.parseInt(
+                        String.valueOf(internship.get("intern_id"))
+                );
+
                 Button applyButton = new Button("Apply Now");
-                try (Connection checkConnection = DatabaseConfig.getConnection()) {
 
-                    ApplicationDAO applicationDAO = new ApplicationDAO();
+                try {
 
-                    boolean alreadyApplied = applicationDAO.hasApplied(
-                            checkConnection,
-                            studentId,
-                            Integer.parseInt(String.valueOf(internship.get("intern_id")))
-                    );
-
-                    if (alreadyApplied) {
+                    if (service.hasApplied(studentId, internId)) {
                         applyButton.setText("Applied");
                         applyButton.setDisable(true);
                     }
@@ -936,30 +731,20 @@ public class StudentDashboard {
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
+
                 applyButton.setOnAction(e -> {
-                    try (Connection applyConnection = DatabaseConfig.getConnection()) {
 
-                        ApplicationDAO applicationDAO = new ApplicationDAO();
+                    try {
 
-                        int internId = Integer.parseInt(
-                                String.valueOf(internship.get("intern_id"))
-                        );
+                        boolean applied = service.applyForInternship(studentId, internId);
 
-                        boolean applied = applicationDAO.applyForInternship(
-                                applyConnection, studentId, internId
-                        );
+                        applyButton.setText("Applied");
+                        applyButton.setDisable(true);
 
                         if (applied) {
-                            applyButton.setText("Applied");
-                            applyButton.setDisable(true);
-
                             new Alert(Alert.AlertType.INFORMATION,
                                     "Application submitted successfully!").showAndWait();
-
                         } else {
-                            applyButton.setText("Applied");
-                            applyButton.setDisable(true);
-
                             new Alert(Alert.AlertType.WARNING,
                                     "You have already applied for this internship.").showAndWait();
                         }
@@ -975,7 +760,6 @@ public class StudentDashboard {
                 internshipCard.setStyle("-fx-padding: 10px;");
 
                 internshipList.getChildren().add(internshipCard);
-
             }
 
             if (internshipList.getChildren().isEmpty()) {
@@ -994,6 +778,7 @@ public class StudentDashboard {
         content.getChildren().addAll(heading, internshipList);
     }
 
+    // MY APPLICATIONS PAGE
     private void showMyApplications() {
 
         content.getChildren().clear();
@@ -1003,12 +788,10 @@ public class StudentDashboard {
 
         VBox applicationList = new VBox(15);
 
-        try (Connection connection = DatabaseConfig.getConnection()) {
-
-            ApplicationDAO dao = new ApplicationDAO();
+        try {
 
             List<Map<String, Object>> applications =
-                    dao.getStudentApplications(connection, studentId);
+                    service.getStudentApplications(studentId);
 
             for (Map<String, Object> application : applications) {
 
@@ -1047,6 +830,7 @@ public class StudentDashboard {
         content.getChildren().addAll(heading, applicationList);
     }
 
+    // ELIGIBILITY PAGE
     private void showEligibility() {
 
         content.getChildren().clear();
@@ -1056,34 +840,10 @@ public class StudentDashboard {
 
         VBox eligibilityList = new VBox(15);
 
-        try (Connection connection = DatabaseConfig.getConnection()) {
+        try {
 
-            InternshipDAO internshipDAO = new InternshipDAO();
-            EligibilityDAO eligibilityDAO = new EligibilityDAO();
-
-            // Calculate eligibility for available internships
-            List<Map<String, Object>> internships =
-                    internshipDAO.getAllInternships(connection);
-
-            for (Map<String, Object> internship : internships) {
-
-                String status = String.valueOf(internship.get("status"));
-
-                if (status.equals("Approved") || status.equals("Published")) {
-
-                    int internId = Integer.parseInt(
-                            String.valueOf(internship.get("intern_id"))
-                    );
-
-                    eligibilityDAO.evaluateAndSave(
-                            connection, studentId, internId
-                    );
-                }
-            }
-
-            // Retrieve eligibility results
             List<Map<String, Object>> results =
-                    eligibilityDAO.getStudentEligibility(connection, studentId);
+                    service.evaluateAndGetEligibility(studentId);
 
             for (Map<String, Object> result : results) {
 
@@ -1122,6 +882,7 @@ public class StudentDashboard {
         content.getChildren().addAll(heading, eligibilityList);
     }
 
+    // MY OFFERS PAGE
     private void showMyOffers() {
 
         content.getChildren().clear();
@@ -1130,12 +891,9 @@ public class StudentDashboard {
 
         VBox offerList = new VBox(15);
 
-        try (Connection connection = DatabaseConfig.getConnection()) {
+        try {
 
-            ApplicationDAO dao = new ApplicationDAO();
-
-            List<Map<String, Object>> offers =
-                    dao.getStudentOffers(connection, studentId);
+            List<Map<String, Object>> offers = service.getStudentOffers(studentId);
 
             if (offers.isEmpty()) {
 
@@ -1147,39 +905,22 @@ public class StudentDashboard {
 
                 for (Map<String, Object> offer : offers) {
 
-                    int offerId =
-                            ((Number) offer.get("offer_id")).intValue();
+                    int offerId = ((Number) offer.get("offer_id")).intValue();
 
                     String status = String.valueOf(offer.get("status"));
 
-                    Label companyLabel = new Label(
-                            "Company: " + offer.get("company_name")
-                    );
-
-                    Label roleLabel = new Label(
-                            "Role: " + offer.get("role")
-                    );
-
-                    Label joiningLabel = new Label(
-                            "Joining Date: " + offer.get("joining_date")
-                    );
-
-                    Label statusLabel = new Label(
-                            "Offer Status: " + status
-                    );
+                    Label companyLabel = new Label("Company: " + offer.get("company_name"));
+                    Label roleLabel = new Label("Role: " + offer.get("role"));
+                    Label joiningLabel = new Label("Joining Date: " + offer.get("joining_date"));
+                    Label statusLabel = new Label("Offer Status: " + status);
 
                     Button acceptButton = new Button("Accept Offer");
                     Button rejectButton = new Button("Reject Offer");
 
                     if ("Pending".equals(status)) {
 
-                        acceptButton.setOnAction(e ->
-                                respondToOffer(offerId, "Accepted")
-                        );
-
-                        rejectButton.setOnAction(e ->
-                                respondToOffer(offerId, "Rejected")
-                        );
+                        acceptButton.setOnAction(e -> respondToOffer(offerId, "Accepted"));
+                        rejectButton.setOnAction(e -> respondToOffer(offerId, "Rejected"));
 
                     } else {
 
@@ -1187,11 +928,7 @@ public class StudentDashboard {
                         rejectButton.setDisable(true);
                     }
 
-                    HBox buttons = new HBox(
-                            10,
-                            acceptButton,
-                            rejectButton
-                    );
+                    HBox buttons = new HBox(10, acceptButton, rejectButton);
 
                     VBox card = new VBox(
                             10,
@@ -1243,16 +980,9 @@ public class StudentDashboard {
 
             if (response == ButtonType.OK) {
 
-                try (Connection connection = DatabaseConfig.getConnection()) {
+                try {
 
-                    ApplicationDAO dao = new ApplicationDAO();
-
-                    dao.updateOfferStatus(
-                            connection,
-                            offerId,
-                            studentId,
-                            status
-                    );
+                    service.updateOfferStatus(offerId, studentId, status);
 
                     Alert success = new Alert(Alert.AlertType.INFORMATION);
                     success.setTitle("Success");

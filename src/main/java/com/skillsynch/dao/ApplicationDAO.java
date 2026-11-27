@@ -10,6 +10,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,19 +32,22 @@ public class ApplicationDAO {
             check.setInt(1, studentId);
             check.setInt(2, internId);
 
-            if (check.executeQuery().next()) {
-                return false;
+            try (ResultSet rs = check.executeQuery()) {
+                if (rs.next()) {
+                    return false;
+                }
             }
         }
 
         String sql = """
             INSERT INTO applications (student_id, intern_id, status)
-            VALUES (?, ?, 'Applied')
+            VALUES (?, ?, ?)
             """;
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, studentId);
             ps.setInt(2, internId);
+            ps.setString(3, ApplicationStatus.APPLIED.getLabel());
             ps.executeUpdate();
         }
 
@@ -66,7 +70,9 @@ public class ApplicationDAO {
             ps.setInt(1, studentId);
             ps.setInt(2, internId);
 
-            return ps.executeQuery().next();
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
         }
     }
 
@@ -317,7 +323,7 @@ public class ApplicationDAO {
             Connection connection,
             int applicationId,
             int companyId,
-            java.sql.Date joiningDate
+            LocalDate joiningDate
     ) throws Exception {
 
         String checkSql = """
@@ -334,10 +340,12 @@ public class ApplicationDAO {
             check.setInt(1, applicationId);
             check.setInt(2, companyId);
 
-            if (!check.executeQuery().next()) {
-                throw new Exception(
-                        "Only selected applications can receive offers."
-                );
+            try (ResultSet rs = check.executeQuery()) {
+                if (!rs.next()) {
+                    throw new Exception(
+                            "Only selected applications can receive offers."
+                    );
+                }
             }
         }
 
@@ -347,16 +355,34 @@ public class ApplicationDAO {
                 joining_date,
                 status
             )
-            VALUES (?, ?, 'Pending')
+            VALUES (?, ?, ?)
             """;
 
+        boolean inserted;
         try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
 
             ps.setInt(1, applicationId);
-            ps.setDate(2, joiningDate);
+            ps.setDate(2, DaoUtil.toSqlDate(joiningDate));
+            ps.setString(3, OfferStatus.PENDING.getLabel());
 
-            return ps.executeUpdate() > 0;
+            inserted = ps.executeUpdate() > 0;
         }
+
+        if (inserted) {
+            String updateApplicationSql = """
+                UPDATE applications
+                SET status = ?
+                WHERE application_id = ?
+                """;
+
+            try (PreparedStatement ps = connection.prepareStatement(updateApplicationSql)) {
+                ps.setString(1, ApplicationStatus.OFFER_EXTENDED.getLabel());
+                ps.setInt(2, applicationId);
+                ps.executeUpdate();
+            }
+        }
+
+        return inserted;
     }
 
     // COMPANY: OFFERS (student name, email and role are filled in)
@@ -461,11 +487,16 @@ public class ApplicationDAO {
             throw new IllegalArgumentException("Invalid offer status.");
         }
 
+        ApplicationStatus applicationStatus = status == OfferStatus.ACCEPTED
+                ? ApplicationStatus.OFFER_ACCEPTED
+                : ApplicationStatus.OFFER_REJECTED;
+
         String sql = """
             UPDATE offers o
             JOIN applications a
                 ON o.application_id = a.application_id
-            SET o.status = ?
+            SET o.status = ?,
+                a.status = ?
             WHERE o.offer_id = ?
             AND a.student_id = ?
             AND o.status = 'Pending'
@@ -474,8 +505,9 @@ public class ApplicationDAO {
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setString(1, status.getLabel());
-            ps.setInt(2, offerId);
-            ps.setInt(3, studentId);
+            ps.setString(2, applicationStatus.getLabel());
+            ps.setInt(3, offerId);
+            ps.setInt(4, studentId);
 
             if (ps.executeUpdate() == 0) {
                 throw new Exception(

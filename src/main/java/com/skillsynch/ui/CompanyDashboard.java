@@ -1,5 +1,11 @@
 package com.skillsynch.ui;
 
+import com.skillsynch.model.Application;
+import com.skillsynch.model.ApplicationStatus;
+import com.skillsynch.model.Company;
+import com.skillsynch.model.Internship;
+import com.skillsynch.model.Offer;
+import com.skillsynch.model.Skill;
 import com.skillsynch.service.CompanyService;
 
 import javafx.geometry.Insets;
@@ -208,7 +214,7 @@ public class CompanyDashboard {
 
         try {
 
-            List<Map<String, Object>> skills = service.getAllSkills();
+            List<Skill> skills = service.getAllSkills();
 
             if (skills.isEmpty()) {
                 skillsBox.getChildren().add(
@@ -216,10 +222,10 @@ public class CompanyDashboard {
                 );
             }
 
-            for (Map<String, Object> skill : skills) {
+            for (Skill skill : skills) {
 
-                int skillId = (int) skill.get("skill_id");
-                String skillName = (String) skill.get("skill_name");
+                int skillId = skill.getSkillId();
+                String skillName = skill.getSkillName();
 
                 CheckBox skillCheckBox = new CheckBox(skillName);
 
@@ -330,7 +336,7 @@ public class CompanyDashboard {
 
         try {
 
-            List<Map<String, Object>> internships =
+            List<Internship> internships =
                     service.getCompanyInternships(companyId);
 
             if (internships.isEmpty()) {
@@ -339,29 +345,32 @@ public class CompanyDashboard {
                 );
             }
 
-            for (Map<String, Object> internship : internships) {
+            for (Internship internship : internships) {
 
-                Label role = new Label(String.valueOf(internship.get("role")));
+                Label role = new Label(internship.getRole());
                 role.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
                 Label description = new Label(
-                        "Description: " + internship.get("description")
+                        "Description: " + (internship.getDescription() == null
+                                ? "No description" : internship.getDescription())
                 );
 
                 Label positions = new Label(
-                        "Positions: " + internship.get("number_of_positions")
+                        "Positions: " + internship.getNumberOfPositions()
                 );
 
                 Label cgpa = new Label(
-                        "Minimum CGPA: " + internship.get("min_cgpa")
+                        "Minimum CGPA: " + (internship.getMinCgpa() == null
+                                ? "Not specified" : internship.getMinCgpa())
                 );
 
                 Label deadline = new Label(
-                        "Deadline: " + internship.get("application_deadline")
+                        "Deadline: " + (internship.getApplicationDeadline() == null
+                                ? "Not specified" : internship.getApplicationDeadline())
                 );
 
                 Label status = new Label(
-                        "Status: " + internship.get("status")
+                        "Status: " + internship.getStatus()
                 );
                 status.setStyle("-fx-font-weight: bold; -fx-text-fill: #4F46E5;");
 
@@ -402,7 +411,7 @@ public class CompanyDashboard {
 
         try {
 
-            List<Map<String, Object>> applications =
+            List<Application> applications =
                     service.getCompanyApplications(companyId);
 
             if (applications.isEmpty()) {
@@ -411,29 +420,29 @@ public class CompanyDashboard {
                 );
             }
 
-            for (Map<String, Object> application : applications) {
+            for (Application application : applications) {
 
-                Label name = new Label("Student: " + application.get("student_name"));
-                Label email = new Label("Email: " + application.get("email"));
-                Label branch = new Label("Branch: " + application.get("branch"));
-                Label cgpa = new Label("CGPA: " + application.get("cgpa"));
-                Label role = new Label("Internship: " + application.get("role"));
-                Label status = new Label("Current Status: " + application.get("status"));
+                Label name = new Label("Student: " + application.getStudentName());
+                Label email = new Label("Email: " + (application.getStudentEmail() == null ? "N/A" : application.getStudentEmail()));
+                Label branch = new Label("Branch: " + application.getBranch());
+                Label cgpa = new Label("CGPA: " + (application.getCgpa() == null ? "N/A" : application.getCgpa()));
+                Label role = new Label("Internship: " + application.getRole());
+                Label status = new Label("Current Status: " + application.getStatus());
 
-                ComboBox<String> statusBox = new ComboBox<>();
+                ComboBox<ApplicationStatus> statusBox = new ComboBox<>();
 
                 statusBox.getItems().addAll(
-                        "Shortlisted",
-                        "Interview",
-                        "Selected",
-                        "Rejected"
+                        ApplicationStatus.SHORTLISTED,
+                        ApplicationStatus.INTERVIEW,
+                        ApplicationStatus.SELECTED,
+                        ApplicationStatus.REJECTED
                 );
 
                 statusBox.setPromptText("Select new status");
 
                 Button updateBtn = new Button("Update Status");
 
-                int applicationId = (int) application.get("application_id");
+                int applicationId = application.getApplicationId();
 
                 updateBtn.setOnAction(e -> {
 
@@ -498,7 +507,7 @@ public class CompanyDashboard {
 
         try {
 
-            List<Map<String, Object>> students =
+            List<Application> students =
                     service.getShortlistedStudents(companyId);
 
             if (students.isEmpty()) {
@@ -507,14 +516,14 @@ public class CompanyDashboard {
                 );
             }
 
-            for (Map<String, Object> student : students) {
+            for (Application student : students) {
 
-                Label name = new Label("Student: " + student.get("student_name"));
-                Label email = new Label("Email: " + student.get("email"));
-                Label branch = new Label("Branch: " + student.get("branch"));
-                Label cgpa = new Label("CGPA: " + student.get("cgpa"));
-                Label role = new Label("Internship: " + student.get("role"));
-                Label status = new Label("Status: " + student.get("status"));
+                Label name = new Label("Student: " + student.getStudentName());
+                Label email = new Label("Email: " + (student.getStudentEmail() == null ? "N/A" : student.getStudentEmail()));
+                Label branch = new Label("Branch: " + student.getBranch());
+                Label cgpa = new Label("CGPA: " + (student.getCgpa() == null ? "N/A" : student.getCgpa()));
+                Label role = new Label("Internship: " + student.getRole());
+                Label status = new Label("Status: " + student.getStatus());
 
                 name.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
                 status.setStyle("-fx-font-weight: bold; -fx-text-fill: #16A34A;");
@@ -575,16 +584,16 @@ public class CompanyDashboard {
 
         try {
 
-            Map<String, Object> company = service.getCompany(companyId);
+            Company company = service.getCompany(companyId);
 
             if (company == null) {
                 showAlert("Company profile not found.");
                 return;
             }
 
-            nameField.setText(String.valueOf(company.get("company_name")));
-            industryField.setText(String.valueOf(company.get("industry")));
-            descriptionArea.setText(String.valueOf(company.get("description")));
+            nameField.setText(company.getCompanyName() == null ? "" : company.getCompanyName());
+            industryField.setText(company.getIndustry() == null ? "" : company.getIndustry());
+            descriptionArea.setText(company.getDescription() == null ? "" : company.getDescription());
 
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -641,20 +650,19 @@ public class CompanyDashboard {
                 "Create offers for selected students and track their responses."
         );
 
-        ComboBox<Map<String, Object>> applicationDropdown = new ComboBox<>();
+        ComboBox<Application> applicationDropdown = new ComboBox<>();
         applicationDropdown.setPromptText("Select a selected student");
         applicationDropdown.setMaxWidth(400);
 
         applicationDropdown.setConverter(new StringConverter<>() {
             @Override
-            public String toString(Map<String, Object> application) {
+            public String toString(Application application) {
                 if (application == null) return "";
-                return application.get("student_name") + " - "
-                        + application.get("role");
+                return application.getStudentName() + " - " + application.getRole();
             }
 
             @Override
-            public Map<String, Object> fromString(String string) {
+            public Application fromString(String string) {
                 return null;
             }
         });
@@ -690,13 +698,13 @@ public class CompanyDashboard {
         // Create offer
         createButton.setOnAction(e -> {
 
-            Map<String, Object> selected = applicationDropdown.getValue();
+            Application selected = applicationDropdown.getValue();
 
             try {
 
                 Integer applicationId = selected == null
                         ? null
-                        : (Integer) selected.get("application_id");
+                        : selected.getApplicationId();
 
                 boolean created = service.createOffer(
                         companyId,
@@ -721,9 +729,9 @@ public class CompanyDashboard {
 
         try {
 
-            List<Map<String, Object>> offers = service.getCompanyOffers(companyId);
+            List<Offer> offers = service.getCompanyOffers(companyId);
 
-            for (Map<String, Object> offer : offers) {
+            for (Offer offer : offers) {
 
                 VBox card = new VBox(8);
                 card.setPadding(new Insets(15));
@@ -733,11 +741,11 @@ public class CompanyDashboard {
                 );
 
                 card.getChildren().addAll(
-                        new Label("Student: " + offer.get("student_name")),
-                        new Label("Email: " + offer.get("email")),
-                        new Label("Role: " + offer.get("role")),
-                        new Label("Joining Date: " + offer.get("joining_date")),
-                        new Label("Offer Status: " + offer.get("status"))
+                        new Label("Student: " + offer.getStudentName()),
+                        new Label("Email: " + (offer.getStudentEmail() == null ? "N/A" : offer.getStudentEmail())),
+                        new Label("Role: " + offer.getRole()),
+                        new Label("Joining Date: " + (offer.getJoiningDate() == null ? "Not specified" : offer.getJoiningDate())),
+                        new Label("Offer Status: " + offer.getStatus())
                 );
 
                 offerList.getChildren().add(card);

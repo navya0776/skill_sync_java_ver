@@ -25,8 +25,8 @@ public class EligibilityDAO {
             WHERE s.student_id = ? AND i.intern_id = ?
             """;
 
-        double cgpa;
-        double minCgpa;
+        Double cgpa;
+        Double minCgpa;
 
         try (PreparedStatement ps = connection.prepareStatement(cgpaSql)) {
             ps.setInt(1, studentId);
@@ -37,8 +37,8 @@ public class EligibilityDAO {
                     throw new Exception("Student or internship not found.");
                 }
 
-                cgpa = rs.getDouble("cgpa");
-                minCgpa = rs.getDouble("min_cgpa");
+                cgpa = DaoUtil.getNullableDouble(rs, "cgpa");
+                minCgpa = DaoUtil.getNullableDouble(rs, "min_cgpa");
             }
         }
 
@@ -77,7 +77,7 @@ public class EligibilityDAO {
 
         EligibilityStatus eligibilityStatus;
 
-        if (cgpa < minCgpa) {
+        if (minCgpa != null && (cgpa == null || cgpa < minCgpa)) {
             eligibilityStatus = EligibilityStatus.NOT_ELIGIBLE;
         } else if (matchPercentage >= 70) {
             eligibilityStatus = EligibilityStatus.ELIGIBLE;

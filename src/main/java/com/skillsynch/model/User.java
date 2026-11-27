@@ -1,17 +1,18 @@
 
 package com.skillsynch.model;
 
+/** One row of the users table. */
 public class User {
 
     private int userId;
     private String username;
     private String passwordHash;
-    private String role;
+    private UserRole role;
     private Integer studentId;
     private Integer companyId;
 
     public User(int userId, String username, String passwordHash,
-                String role, Integer studentId, Integer companyId) {
+                UserRole role, Integer studentId, Integer companyId) {
         this.userId = userId;
         this.username = username;
         this.passwordHash = passwordHash;
@@ -32,7 +33,7 @@ public class User {
         return passwordHash;
     }
 
-    public String getRole() {
+    public UserRole getRole() {
         return role;
     }
 

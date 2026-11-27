@@ -6,6 +6,15 @@ import com.skillsynch.dao.EligibilityDAO;
 import com.skillsynch.dao.InternshipDAO;
 import com.skillsynch.dao.SkillDAO;
 import com.skillsynch.dao.StudentDAO;
+import com.skillsynch.model.Application;
+import com.skillsynch.model.Eligibility;
+import com.skillsynch.model.Internship;
+import com.skillsynch.model.InternshipStatus;
+import com.skillsynch.model.Offer;
+import com.skillsynch.model.OfferStatus;
+import com.skillsynch.model.Skill;
+import com.skillsynch.model.Student;
+import com.skillsynch.model.StudentSkill;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -14,7 +23,6 @@ import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class StudentService {
 
@@ -34,13 +42,12 @@ public class StudentService {
     // PROFILE
     // =========================================================
 
-    /** Returns the student's profile row, or null/empty if not found. */
-    public Map<String, Object> getStudentProfile(int studentId) throws Exception {
+    /** Returns the student's profile, or null if not found. */
+    public Student getStudentProfile(int studentId) throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return studentDAO.getStudentById(connection, studentId);
         }
     }
-
 
     public void updateProfile(
             int studentId,
@@ -76,8 +83,8 @@ public class StudentService {
             throw new ValidationException("Year and CGPA must be valid numbers.");
         }
 
-        if (year < 1 || year > 5) {
-            throw new ValidationException("Year must be between 1 and 5.");
+        if (year < 1 || year > 4) {
+            throw new ValidationException("Year must be between 1 and 4.");
         }
 
         if (cgpa < 0 || cgpa > 10) {
@@ -89,17 +96,11 @@ public class StudentService {
             resumeUrl = storeResume(studentId, newResumeFile);
         }
 
+        String storedResumeUrl = resumeUrl.isEmpty() ? null : resumeUrl;
+        Student student = new Student(studentId, name, branch, year, cgpa, email, storedResumeUrl);
+
         try (Connection connection = DatabaseConfig.getConnection()) {
-            studentDAO.updateStudent(
-                    connection,
-                    studentId,
-                    name,
-                    branch,
-                    year,
-                    cgpa,
-                    email,
-                    resumeUrl
-            );
+            studentDAO.updateStudent(connection, student);
         }
     }
 
@@ -120,11 +121,11 @@ public class StudentService {
      * Decides which resume path to use: the newly chosen file if there is one,
      * otherwise the one stored in the database. Returns "" if neither exists.
      */
-    public String resolveResumePath(File selectedResume, Object storedResume) {
+    public String resolveResumePath(File selectedResume, String storedResume) {
         if (selectedResume != null) {
             return selectedResume.getAbsolutePath();
         }
-        return storedResume == null ? "" : storedResume.toString();
+        return storedResume == null ? "" : storedResume;
     }
 
     /** Copies a resume file to a location the student picked. */
@@ -136,19 +137,23 @@ public class StudentService {
     // SKILLS
     // =========================================================
 
-    public List<Map<String, Object>> getAllSkills() throws Exception {
+    public List<Skill> getAllSkills() throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return skillDAO.getAllSkills(connection);
         }
     }
 
-    public List<Map<String, Object>> getStudentSkills(int studentId) throws Exception {
+    public List<StudentSkill> getStudentSkills(int studentId) throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return skillDAO.getStudentSkills(connection, studentId);
         }
     }
 
     public void addStudentSkill(int studentId, int skillId, int proficiency) throws Exception {
+        if (proficiency < 1 || proficiency > 5) {
+            throw new ValidationException("Proficiency level must be between 1 and 5.");
+        }
+
         try (Connection connection = DatabaseConfig.getConnection()) {
             skillDAO.addStudentSkill(connection, studentId, skillId, proficiency);
         }
@@ -165,7 +170,7 @@ public class StudentService {
     // =========================================================
 
     /** Only internships that are Approved or Published are visible to students. */
-    public List<Map<String, Object>> getAvailableInternships() throws Exception {
+    public List<Internship> getAvailableInternships() throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return filterAvailable(internshipDAO.getAllInternships(connection));
         }
@@ -184,7 +189,7 @@ public class StudentService {
         }
     }
 
-    public List<Map<String, Object>> getStudentApplications(int studentId) throws Exception {
+    public List<Application> getStudentApplications(int studentId) throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return applicationDAO.getStudentApplications(connection, studentId);
         }
@@ -198,15 +203,14 @@ public class StudentService {
      * Re-calculates eligibility for every available internship,
      * saves it, then returns the student's eligibility results.
      */
-    public List<Map<String, Object>> evaluateAndGetEligibility(int studentId) throws Exception {
+    public List<Eligibility> evaluateAndGetEligibility(int studentId) throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
 
-            List<Map<String, Object>> available =
+            List<Internship> available =
                     filterAvailable(internshipDAO.getAllInternships(connection));
 
-            for (Map<String, Object> internship : available) {
-                int internId = Integer.parseInt(String.valueOf(internship.get("intern_id")));
-                eligibilityDAO.evaluateAndSave(connection, studentId, internId);
+            for (Internship internship : available) {
+                eligibilityDAO.evaluateAndSave(connection, studentId, internship.getInternId());
             }
 
             return eligibilityDAO.getStudentEligibility(connection, studentId);
@@ -217,29 +221,56 @@ public class StudentService {
     // OFFERS
     // =========================================================
 
-    public List<Map<String, Object>> getStudentOffers(int studentId) throws Exception {
+    public List<Offer> getStudentOffers(int studentId) throws Exception {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return applicationDAO.getStudentOffers(connection, studentId);
         }
     }
 
-    public void updateOfferStatus(int offerId, int studentId, String status) throws Exception {
-        try (Connection connection = DatabaseConfig.getConnection()) {
-            applicationDAO.updateOfferStatus(connection, offerId, studentId, status);
+    public void updateOfferStatus(int offerId, int studentId, OfferStatus status) throws Exception {
+        if (status != OfferStatus.ACCEPTED && status != OfferStatus.REJECTED) {
+            throw new ValidationException("Invalid offer status.");
         }
+
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            connection.setAutoCommit(false);
+
+            try {
+                applicationDAO.updateOfferStatus(connection, offerId, studentId, status);
+                connection.commit();
+            } catch (Exception ex) {
+                connection.rollback();
+                throw ex;
+            }
+        }
+    }
+
+    public void updateOfferStatus(int offerId, int studentId, String status) throws Exception {
+        if (status == null || status.isBlank()) {
+            throw new ValidationException("Please select an offer status.");
+        }
+
+        OfferStatus parsedStatus;
+        try {
+            parsedStatus = OfferStatus.fromLabel(status.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new ValidationException("Invalid offer status: " + status);
+        }
+
+        updateOfferStatus(offerId, studentId, parsedStatus);
     }
 
     // =========================================================
     // HELPERS
     // =========================================================
 
-    private List<Map<String, Object>> filterAvailable(List<Map<String, Object>> internships) {
-        List<Map<String, Object>> result = new ArrayList<>();
+    private List<Internship> filterAvailable(List<Internship> internships) {
+        List<Internship> result = new ArrayList<>();
 
-        for (Map<String, Object> internship : internships) {
-            String status = String.valueOf(internship.get("status"));
+        for (Internship internship : internships) {
+            InternshipStatus status = internship.getStatus();
 
-            if (status.equals("Approved") || status.equals("Published")) {
+            if (status == InternshipStatus.APPROVED || status == InternshipStatus.PUBLISHED) {
                 result.add(internship);
             }
         }

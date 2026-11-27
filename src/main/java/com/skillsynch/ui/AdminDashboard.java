@@ -1,5 +1,11 @@
 package com.skillsynch.ui;
 
+import com.skillsynch.model.Application;
+import com.skillsynch.model.ApplicationStats;
+import com.skillsynch.model.Company;
+import com.skillsynch.model.Internship;
+import com.skillsynch.model.InternshipStatus;
+import com.skillsynch.model.Student;
 import com.skillsynch.service.AdminService;
 
 import javafx.geometry.Insets;
@@ -11,7 +17,6 @@ import javafx.util.StringConverter;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * UI layer only: builds JavaFX screens and delegates all data access,
@@ -193,7 +198,7 @@ public class AdminDashboard {
 
         try {
 
-            List<Map<String, Object>> internships = service.getAllInternships();
+            List<Internship> internships = service.getAllInternships();
 
             if (internships.isEmpty()) {
 
@@ -203,15 +208,15 @@ public class AdminDashboard {
 
             } else {
 
-                for (Map<String, Object> internship : internships) {
+                for (Internship internship : internships) {
 
-                    int internshipId =
-                            ((Number) internship.get("intern_id")).intValue();
+                    int internshipId = internship.getInternId();
 
-                    String companyName = String.valueOf(internship.get("company_name"));
-                    String role = String.valueOf(internship.get("role"));
-                    String description = String.valueOf(internship.get("description"));
-                    String status = String.valueOf(internship.get("status"));
+                    String companyName = internship.getCompanyName();
+                    String role = internship.getRole();
+                    String description = internship.getDescription() == null
+                            ? "No description" : internship.getDescription();
+                    InternshipStatus status = internship.getStatus();
 
                     Label roleLabel = new Label(role);
                     roleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
@@ -220,23 +225,24 @@ public class AdminDashboard {
                     Label descriptionLabel = new Label("Description: " + description);
 
                     Label cgpaLabel = new Label(
-                            "Minimum CGPA: " + internship.get("min_cgpa")
+                            "Minimum CGPA: " + (internship.getMinCgpa() == null
+                                    ? "Not specified" : internship.getMinCgpa())
                     );
 
                     Label positionsLabel = new Label(
-                            "Positions: " + internship.get("number_of_positions")
+                            "Positions: " + internship.getNumberOfPositions()
                     );
 
                     Label deadlineLabel = new Label(
-                            "Application Deadline: " +
-                                    internship.get("application_deadline")
+                            "Application Deadline: " + (internship.getApplicationDeadline() == null
+                                    ? "Not specified" : internship.getApplicationDeadline())
                     );
 
                     Label statusLabel = new Label("Status: " + status);
 
                     HBox buttons = new HBox(15);
 
-                    if (status.equals("Pending")) {
+                    if (status == InternshipStatus.PENDING) {
 
                         Button approveBtn = new Button("Approve");
                         Button rejectBtn = new Button("Reject");
@@ -254,11 +260,11 @@ public class AdminDashboard {
                         );
 
                         approveBtn.setOnAction(e ->
-                                updateInternshipStatus(internshipId, "Approved")
+                                updateInternshipStatus(internshipId, InternshipStatus.APPROVED)
                         );
 
                         rejectBtn.setOnAction(e ->
-                                updateInternshipStatus(internshipId, "Rejected")
+                                updateInternshipStatus(internshipId, InternshipStatus.REJECTED)
                         );
 
                         buttons.getChildren().addAll(approveBtn, rejectBtn);
@@ -307,7 +313,7 @@ public class AdminDashboard {
         content.getChildren().addAll(heading, message, scrollPane);
     }
 
-    private void updateInternshipStatus(int internshipId, String newStatus) {
+    private void updateInternshipStatus(int internshipId, InternshipStatus newStatus) {
 
         try {
 
@@ -334,30 +340,30 @@ public class AdminDashboard {
 
         try {
 
-            Map<String, Integer> stats = service.getApplicationStatistics();
+            ApplicationStats stats = service.getApplicationStatistics();
 
             HBox cards = new HBox(20);
 
             cards.getChildren().addAll(
                     createCard(
                             "Total Applications",
-                            String.valueOf(stats.get("total_applications"))
+                            String.valueOf(stats.getTotalApplications())
                     ),
                     createCard(
                             "Selected Students",
-                            String.valueOf(stats.get("selected"))
+                            String.valueOf(stats.getSelected())
                     ),
                     createCard(
                             "Shortlisted Students",
-                            String.valueOf(stats.get("shortlisted"))
+                            String.valueOf(stats.getShortlisted())
                     ),
                     createCard(
                             "Rejected Applications",
-                            String.valueOf(stats.get("rejected"))
+                            String.valueOf(stats.getRejected())
                     ),
                     createCard(
                             "Offers Extended",
-                            String.valueOf(stats.get("offers_extended"))
+                            String.valueOf(stats.getOffersExtended())
                     )
             );
 
@@ -495,7 +501,7 @@ public class AdminDashboard {
 
             try {
 
-                List<Map<String, Object>> companies = service.getAllCompanies();
+                List<Company> companies = service.getAllCompanies();
 
                 if (companies.isEmpty()) {
                     companyList.getChildren().add(
@@ -504,11 +510,13 @@ public class AdminDashboard {
                     return;
                 }
 
-                for (Map<String, Object> company : companies) {
+                for (Company company : companies) {
+
+                    String industryText = company.getIndustry() == null
+                            ? "N/A" : company.getIndustry();
 
                     Label companyLabel = new Label(
-                            company.get("company_name") + " - "
-                                    + company.get("industry")
+                            company.getCompanyName() + " - " + industryText
                     );
 
                     companyLabel.setStyle(
@@ -567,19 +575,18 @@ public class AdminDashboard {
         heading.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
 
         // Company dropdown
-        ComboBox<Map<String, Object>> companyDropdown = new ComboBox<>();
+        ComboBox<Company> companyDropdown = new ComboBox<>();
         companyDropdown.setPromptText("Select a company");
         companyDropdown.setMaxWidth(Double.MAX_VALUE);
 
         companyDropdown.setConverter(new StringConverter<>() {
             @Override
-            public String toString(Map<String, Object> company) {
-                return company == null ? "" :
-                        company.get("company_name").toString();
+            public String toString(Company company) {
+                return company == null ? "" : company.getCompanyName();
             }
 
             @Override
-            public Map<String, Object> fromString(String string) {
+            public Company fromString(String string) {
                 return null;
             }
         });
@@ -684,7 +691,7 @@ public class AdminDashboard {
 
         VBox studentList = new VBox(12);
 
-        List<Map<String, Object>> allStudents = new ArrayList<>();
+        List<Student> allStudents = new ArrayList<>();
 
         // Load students
         try {
@@ -703,32 +710,32 @@ public class AdminDashboard {
 
             studentList.getChildren().clear();
 
-            List<Map<String, Object>> matches =
+            List<Student> matches =
                     service.filterStudents(allStudents, searchField.getText());
 
-            for (Map<String, Object> student : matches) {
+            for (Student student : matches) {
 
-                String name = String.valueOf(student.get("name"));
-                String email = String.valueOf(student.get("email"));
+                String name = student.getName();
+                String email = student.getEmail() == null ? "Not provided" : student.getEmail();
 
                 Label nameLabel = new Label(name);
                 nameLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
                 Label emailLabel = new Label("Email: " + email);
 
-                Label branchLabel = new Label("Branch: " + student.get("branch"));
-                Label yearLabel = new Label("Year: " + student.get("year"));
-                Label cgpaLabel = new Label("CGPA: " + student.get("cgpa"));
+                Label branchLabel = new Label("Branch: " + student.getBranch());
+                Label yearLabel = new Label("Year: " + (student.getYear() == null ? "N/A" : student.getYear()));
+                Label cgpaLabel = new Label("CGPA: " + (student.getCgpa() == null ? "N/A" : student.getCgpa()));
 
                 Label resumeLabel = new Label(
                         "Resume: " + (
-                                student.get("resume_url") == null
+                                student.getResumeUrl() == null || student.getResumeUrl().isBlank()
                                         ? "Not uploaded"
-                                        : student.get("resume_url")
+                                        : student.getResumeUrl()
                         )
                 );
 
-                int studentId = ((Number) student.get("student_id")).intValue();
+                int studentId = student.getStudentId();
 
                 Button deleteBtn = new Button("Delete Student");
 
@@ -781,7 +788,7 @@ public class AdminDashboard {
                     });
                 });
 
-                Label idLabel = new Label("Student ID: " + student.get("student_id"));
+                Label idLabel = new Label("Student ID: " + student.getStudentId());
 
                 VBox studentCard = new VBox(
                         8,
@@ -850,7 +857,7 @@ public class AdminDashboard {
 
         VBox applicationList = new VBox(12);
 
-        List<Map<String, Object>> allApplications = new ArrayList<>();
+        List<Application> allApplications = new ArrayList<>();
 
         try {
 
@@ -866,34 +873,34 @@ public class AdminDashboard {
 
             applicationList.getChildren().clear();
 
-            List<Map<String, Object>> matches =
+            List<Application> matches =
                     service.filterApplications(allApplications, searchField.getText());
 
-            for (Map<String, Object> application : matches) {
+            for (Application application : matches) {
 
                 Label studentLabel = new Label(
-                        "Student: " + application.get("student_name")
+                        "Student: " + application.getStudentName()
                 );
                 studentLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
                 Label idLabel = new Label(
-                        "Application ID: " + application.get("application_id")
+                        "Application ID: " + application.getApplicationId()
                 );
 
-                Label emailLabel = new Label("Email: " + application.get("email"));
-                Label branchLabel = new Label("Branch: " + application.get("branch"));
-                Label cgpaLabel = new Label("CGPA: " + application.get("cgpa"));
-                Label companyLabel = new Label("Company: " + application.get("company_name"));
+                Label emailLabel = new Label("Email: " + (application.getStudentEmail() == null ? "N/A" : application.getStudentEmail()));
+                Label branchLabel = new Label("Branch: " + application.getBranch());
+                Label cgpaLabel = new Label("CGPA: " + (application.getCgpa() == null ? "N/A" : application.getCgpa()));
+                Label companyLabel = new Label("Company: " + application.getCompanyName());
 
                 Label roleLabel = new Label(
-                        "Internship Role: " + application.get("role")
+                        "Internship Role: " + application.getRole()
                 );
 
                 Label dateLabel = new Label(
-                        "Application Date: " + application.get("application_date")
+                        "Application Date: " + application.getApplicationDate()
                 );
 
-                Label statusLabel = new Label("Status: " + application.get("status"));
+                Label statusLabel = new Label("Status: " + application.getStatus());
 
                 VBox card = new VBox(
                         8,

@@ -112,9 +112,9 @@ public class Main extends Application {
             return;
         }
 
-        switch (user.getRole().toLowerCase()) {
+        switch (user.getRole()) {
 
-            case "student":
+            case STUDENT:
 
                 if (user.getStudentId() == null) {
                     showError("No student profile is linked to this account.");
@@ -124,7 +124,7 @@ public class Main extends Application {
                 showStudentDashboard(user.getStudentId());
                 break;
 
-            case "company":
+            case COMPANY:
 
                 if (user.getCompanyId() == null) {
                     showError("No company profile is linked to this account.");
@@ -133,7 +133,7 @@ public class Main extends Application {
 
                 showCompanyDashboard(user.getCompanyId());
                 break;
-            case "admin":
+            case ADMIN:
                 showAdminDashboard();
                 break;
 

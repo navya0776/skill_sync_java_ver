@@ -12,18 +12,17 @@ import java.util.List;
 public class StudentDAO {
 
     // CREATE STUDENT DURING REGISTRATION
-    // (signature unchanged, so existing registration code keeps working)
     public int createStudent(
             Connection connection,
             String name,
             String branch,
-            int year,
-            double cgpa,
+            Integer year,
+            Double cgpa,
             String email
     ) throws Exception {
 
         String sql = """
-                INSERT INTO Students
+                INSERT INTO students
                 (name, branch, year, cgpa, email)
                 VALUES (?, ?, ?, ?, ?)
                 """;
@@ -36,8 +35,8 @@ public class StudentDAO {
 
             statement.setString(1, name);
             statement.setString(2, branch);
-            statement.setInt(3, year);
-            statement.setDouble(4, cgpa);
+            DaoUtil.setNullableInt(statement, 3, year);
+            DaoUtil.setNullableDouble(statement, 4, cgpa);
             statement.setString(5, email);
 
             statement.executeUpdate();
@@ -73,7 +72,7 @@ public class StudentDAO {
 
         String sql = """
                 SELECT student_id, name, branch, year, cgpa, email, resume_url
-                FROM Students
+                FROM students
                 WHERE student_id = ?
                 """;
 
@@ -109,8 +108,8 @@ public class StudentDAO {
                     s.resume_url,
                     u.user_id,
                     u.username
-                FROM Students s
-                LEFT JOIN Users u
+                FROM students s
+                LEFT JOIN users u
                     ON s.student_id = u.student_id
                     AND u.role = 'student'
                 ORDER BY s.student_id
@@ -125,13 +124,7 @@ public class StudentDAO {
             while (result.next()) {
 
                 Student student = mapStudent(result);
-
-                int userId = result.getInt("user_id");
-
-                if (!result.wasNull()) {
-                    student.setUserId(userId);
-                }
-
+                student.setUserId(DaoUtil.getNullableInt(result, "user_id"));
                 student.setUsername(result.getString("username"));
 
                 students.add(student);
@@ -148,7 +141,7 @@ public class StudentDAO {
     ) throws Exception {
 
         String sql = """
-                DELETE FROM Students
+                DELETE FROM students
                 WHERE student_id = ?
                 """;
 
@@ -172,7 +165,7 @@ public class StudentDAO {
     ) throws Exception {
 
         String sql = """
-                UPDATE Students
+                UPDATE students
                 SET name = ?,
                     branch = ?,
                     year = ?,
@@ -187,8 +180,8 @@ public class StudentDAO {
 
             statement.setString(1, student.getName());
             statement.setString(2, student.getBranch());
-            statement.setInt(3, student.getYear());
-            statement.setDouble(4, student.getCgpa());
+            DaoUtil.setNullableInt(statement, 3, student.getYear());
+            DaoUtil.setNullableDouble(statement, 4, student.getCgpa());
             statement.setString(5, student.getEmail());
             statement.setString(6, student.getResumeUrl());
             statement.setInt(7, student.getStudentId());
@@ -208,8 +201,8 @@ public class StudentDAO {
                 result.getInt("student_id"),
                 result.getString("name"),
                 result.getString("branch"),
-                result.getInt("year"),
-                result.getDouble("cgpa"),
+                DaoUtil.getNullableInt(result, "year"),
+                DaoUtil.getNullableDouble(result, "cgpa"),
                 result.getString("email"),
                 result.getString("resume_url")
         );

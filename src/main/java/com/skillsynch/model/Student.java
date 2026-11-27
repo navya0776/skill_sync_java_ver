@@ -10,17 +10,17 @@ public class Student {
     private int studentId;
     private String name;
     private String branch;
-    private int year;
-    private double cgpa;
-    private String email;
-    private String resumeUrl;
+    private Integer year;    // may be null
+    private Double cgpa;     // may be null
+    private String email;    // may be null
+    private String resumeUrl; // may be null
 
     // Optional: from the Users table
     private Integer userId;
     private String username;
 
-    public Student(int studentId, String name, String branch, int year,
-                   double cgpa, String email, String resumeUrl) {
+    public Student(int studentId, String name, String branch, Integer year,
+                   Double cgpa, String email, String resumeUrl) {
         this.studentId = studentId;
         this.name = name;
         this.branch = branch;
@@ -42,14 +42,17 @@ public class Student {
         return branch;
     }
 
-    public int getYear() {
+    /** May be null if not yet specified. */
+    public Integer getYear() {
         return year;
     }
 
-    public double getCgpa() {
+    /** May be null if not yet specified. */
+    public Double getCgpa() {
         return cgpa;
     }
 
+    /** May be null if not provided. */
     public String getEmail() {
         return email;
     }
@@ -76,11 +79,11 @@ public class Student {
         this.branch = branch;
     }
 
-    public void setYear(int year) {
+    public void setYear(Integer year) {
         this.year = year;
     }
 
-    public void setCgpa(double cgpa) {
+    public void setCgpa(Double cgpa) {
         this.cgpa = cgpa;
     }
 

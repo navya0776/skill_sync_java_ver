@@ -1,6 +1,7 @@
 
 package com.skillsynch.ui;
 
+import com.skillsynch.model.UserRole;
 import com.skillsynch.service.RegistrationService;
 
 import javafx.geometry.Insets;
@@ -8,6 +9,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.util.StringConverter;
 
 public class RegisterView {
 
@@ -37,9 +39,25 @@ public class RegisterView {
         subtitle.getStyleClass().add("subheading");
 
         // Account type
-        ComboBox<String> role = new ComboBox<>();
-        role.getItems().addAll("Student", "Company");
-        role.setValue("Student");
+        ComboBox<UserRole> role = new ComboBox<>();
+        role.getItems().addAll(UserRole.STUDENT, UserRole.COMPANY);
+        role.setValue(UserRole.STUDENT);
+        role.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(UserRole userRole) {
+                if (userRole == null) return "";
+                return switch (userRole) {
+                    case STUDENT -> "Student";
+                    case COMPANY -> "Company";
+                    case ADMIN -> "College Admin";
+                };
+            }
+
+            @Override
+            public UserRole fromString(String string) {
+                return null;
+            }
+        });
         role.setMaxWidth(Double.MAX_VALUE);
 
         // Common fields
@@ -81,7 +99,7 @@ public class RegisterView {
 
             dynamicFields.getChildren().clear();
 
-            if (role.getValue().equals("Student")) {
+            if (role.getValue() == UserRole.STUDENT) {
 
                 dynamicFields.getChildren().addAll(
                         field("Branch", branch),
@@ -156,7 +174,7 @@ public class RegisterView {
 
             try {
 
-                if (role.getValue().equals("Student")) {
+                if (role.getValue() == UserRole.STUDENT) {
 
                     if (branch.getText().isBlank()
                             || year.getText().isBlank()
@@ -183,10 +201,10 @@ public class RegisterView {
                         return;
                     }
 
-                    if (academicYear < 1 || academicYear > 6) {
+                    if (academicYear < 1 || academicYear > 4) {
                         showAlert(
                                 Alert.AlertType.WARNING,
-                                "Academic year must be between 1 and 6."
+                                "Academic year must be between 1 and 4."
                         );
                         return;
                     }
@@ -225,6 +243,10 @@ public class RegisterView {
                 );
 
                 openLogin.run();
+
+            } catch (IllegalArgumentException ex) {
+
+                showAlert(Alert.AlertType.WARNING, ex.getMessage());
 
             } catch (Exception ex) {
 

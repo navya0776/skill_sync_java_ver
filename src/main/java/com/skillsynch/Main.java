@@ -8,8 +8,11 @@ import com.skillsynch.ui.LoginView;
 import com.skillsynch.ui.RegisterView;
 
 import javafx.application.Application;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+
+import java.net.URL;
 
 public class Main extends Application {
 
@@ -29,12 +32,21 @@ public class Main extends Application {
         stage.show();
     }
 
+    private Scene createScene(Parent root, double width, double height) {
+        Scene scene = new Scene(root, width, height);
+        URL stylesheet = getClass().getResource("/css/style.css");
+        if (stylesheet != null) {
+            scene.getStylesheets().add(stylesheet.toExternalForm());
+        }
+        return scene;
+    }
+
     // LOGIN SCREEN
     private void showLogin() {
 
         LoginView loginView = new LoginView();
 
-        Scene scene = new Scene(
+        Scene scene = createScene(
                 loginView.getView(
                         this::showRegister,
                         this::openDashboard
@@ -51,7 +63,7 @@ public class Main extends Application {
 
         RegisterView registerView = new RegisterView();
 
-        Scene scene = new Scene(
+        Scene scene = createScene(
                 registerView.getView(this::showLogin),
                 1000,
                 700
@@ -65,7 +77,7 @@ public class Main extends Application {
 
         StudentDashboard dashboard = new StudentDashboard();
 
-        Scene scene = new Scene(
+        Scene scene = createScene(
                 dashboard.getView(this::showLogin, studentId),
                 1100,
                 700
@@ -79,7 +91,7 @@ public class Main extends Application {
 
         CompanyDashboard dashboard = new CompanyDashboard();
 
-        Scene scene = new Scene(
+        Scene scene = createScene(
                 dashboard.getView(this::showLogin, companyId),
                 1100,
                 700
@@ -88,14 +100,12 @@ public class Main extends Application {
         stage.setScene(scene);
     }
 
-
-
     // ADMIN DASHBOARD
     private void showAdminDashboard() {
 
         AdminDashboard dashboard = new AdminDashboard();
 
-        Scene scene = new Scene(
+        Scene scene = createScene(
                 dashboard.getView(this::showLogin),
                 1100,
                 700

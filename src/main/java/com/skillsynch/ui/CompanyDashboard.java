@@ -26,28 +26,31 @@ import java.util.Map;
 public class CompanyDashboard {
 
     private final BorderPane root = new BorderPane();
-    private final VBox content = new VBox(20);
+    private final VBox content = new VBox(18);
 
     private final CompanyService service = new CompanyService();
 
     private int companyId;
+    private Button activeNavButton;
 
     public Parent getView(Runnable logout, int companyId) {
 
         this.companyId = companyId;
 
         // Sidebar
-        VBox sidebar = new VBox(15);
-        sidebar.setPadding(new Insets(25));
+        VBox sidebar = new VBox(6);
+        sidebar.setPadding(new Insets(22, 16, 22, 16));
         sidebar.setPrefWidth(230);
-        sidebar.setStyle("-fx-background-color: #1E293B;");
+        sidebar.getStyleClass().add("sidebar");
 
         Label logo = new Label("SkillSynch");
-        logo.setStyle(
-                "-fx-text-fill: white;" +
-                        "-fx-font-size: 25px;" +
-                        "-fx-font-weight: bold;"
-        );
+        logo.getStyleClass().add("brand-title");
+
+        Label portalLabel = new Label("Company Portal");
+        portalLabel.getStyleClass().add("brand-subtitle");
+
+        VBox brandBox = new VBox(2, logo, portalLabel);
+        brandBox.setPadding(new Insets(0, 6, 8, 6));
 
         Button dashboardBtn = createButton("Dashboard");
         Button profileBtn = createButton("Company Profile");
@@ -56,10 +59,17 @@ public class CompanyDashboard {
         Button applicationsBtn = createButton("Applications");
         Button shortlistBtn = createButton("Shortlisted Students");
         Button offersBtn = createButton("Offers");
-        Button logoutBtn = createButton("Logout");
+
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        Button logoutBtn = new Button("Logout");
+        logoutBtn.setMaxWidth(Double.MAX_VALUE);
+        logoutBtn.setAlignment(Pos.CENTER_LEFT);
+        logoutBtn.getStyleClass().add("nav-logout");
 
         sidebar.getChildren().addAll(
-                logo,
+                brandBox,
                 new Separator(),
                 dashboardBtn,
                 profileBtn,
@@ -68,29 +78,45 @@ public class CompanyDashboard {
                 applicationsBtn,
                 shortlistBtn,
                 offersBtn,
+                spacer,
                 logoutBtn
         );
 
         // Main content
-        content.setPadding(new Insets(30));
-        content.setStyle("-fx-background-color: #F8FAFC;");
+        content.setPadding(new Insets(28));
+        content.getStyleClass().add("content-area");
 
         root.setLeft(sidebar);
         root.setCenter(content);
 
         // Navigation
-        dashboardBtn.setOnAction(e -> showDashboard());
-        profileBtn.setOnAction(e -> showCompanyProfile());
-        postBtn.setOnAction(e -> showPostInternship());
-        internshipsBtn.setOnAction(e -> showMyInternships());
-        applicationsBtn.setOnAction(e -> showApplications());
-        shortlistBtn.setOnAction(e -> showShortlistedStudents());
-        offersBtn.setOnAction(e -> showOffers());
+        dashboardBtn.setOnAction(e -> { setActiveNav(dashboardBtn); showDashboard(); });
+        profileBtn.setOnAction(e -> { setActiveNav(profileBtn); showCompanyProfile(); });
+        postBtn.setOnAction(e -> { setActiveNav(postBtn); showPostInternship(); });
+        internshipsBtn.setOnAction(e -> { setActiveNav(internshipsBtn); showMyInternships(); });
+        applicationsBtn.setOnAction(e -> { setActiveNav(applicationsBtn); showApplications(); });
+        shortlistBtn.setOnAction(e -> { setActiveNav(shortlistBtn); showShortlistedStudents(); });
+        offersBtn.setOnAction(e -> { setActiveNav(offersBtn); showOffers(); });
         logoutBtn.setOnAction(e -> logout.run());
 
+        setActiveNav(dashboardBtn);
         showDashboard();
 
         return root;
+    }
+
+    private void setActiveNav(Button button) {
+        if (activeNavButton != null) {
+            activeNavButton.getStyleClass().remove("nav-button-active");
+            if (!activeNavButton.getStyleClass().contains("nav-button")) {
+                activeNavButton.getStyleClass().add("nav-button");
+            }
+        }
+        activeNavButton = button;
+        activeNavButton.getStyleClass().remove("nav-button");
+        if (!activeNavButton.getStyleClass().contains("nav-button-active")) {
+            activeNavButton.getStyleClass().add("nav-button-active");
+        }
     }
 
     private Button createButton(String text) {
@@ -98,15 +124,7 @@ public class CompanyDashboard {
         Button button = new Button(text);
         button.setMaxWidth(Double.MAX_VALUE);
         button.setAlignment(Pos.CENTER_LEFT);
-
-        button.setStyle(
-                "-fx-background-color: #334155;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-font-size: 14px;" +
-                        "-fx-padding: 12px;" +
-                        "-fx-background-radius: 8px;" +
-                        "-fx-cursor: hand;"
-        );
+        button.getStyleClass().add("nav-button");
 
         return button;
     }
@@ -117,14 +135,16 @@ public class CompanyDashboard {
         content.getChildren().clear();
 
         Label heading = new Label("Company Dashboard");
-        heading.setStyle(
-                "-fx-font-size: 28px;" +
-                        "-fx-font-weight: bold;"
-        );
+        heading.getStyleClass().add("hero-title");
 
         Label welcome = new Label("Welcome to SkillSynch!");
+        welcome.getStyleClass().add("hero-subtitle");
 
-        HBox cards = new HBox(20);
+        VBox banner = new VBox(6, heading, welcome);
+        banner.setPadding(new Insets(24));
+        banner.getStyleClass().add("hero-banner");
+
+        HBox cards = new HBox(16);
 
         cards.getChildren().addAll(
                 createCard("Posted Internships", "0"),
@@ -132,35 +152,22 @@ public class CompanyDashboard {
                 createCard("Shortlisted Students", "0")
         );
 
-        content.getChildren().addAll(heading, welcome, cards);
+        content.getChildren().addAll(banner, cards);
     }
 
     private VBox createCard(String title, String value) {
 
         Label titleLabel = new Label(title);
-        titleLabel.setStyle(
-                "-fx-font-size: 15px;" +
-                        "-fx-text-fill: #64748B;"
-        );
+        titleLabel.getStyleClass().add("stat-title");
 
         Label valueLabel = new Label(value);
-        valueLabel.setStyle(
-                "-fx-font-size: 30px;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-text-fill: #4F46E5;"
-        );
+        valueLabel.getStyleClass().add("stat-value");
 
-        VBox card = new VBox(15, titleLabel, valueLabel);
+        VBox card = new VBox(10, titleLabel, valueLabel);
 
-        card.setPadding(new Insets(25));
+        card.setPadding(new Insets(22));
         card.setPrefWidth(220);
-
-        card.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-background-radius: 12px;" +
-                        "-fx-border-color: #E2E8F0;" +
-                        "-fx-border-radius: 12px;"
-        );
+        card.getStyleClass().add("stat-card");
 
         return card;
     }
@@ -170,12 +177,10 @@ public class CompanyDashboard {
         content.getChildren().clear();
 
         Label heading = new Label(title);
-        heading.setStyle(
-                "-fx-font-size: 28px;" +
-                        "-fx-font-weight: bold;"
-        );
+        heading.getStyleClass().add("heading");
 
         Label message = new Label(description);
+        message.getStyleClass().add("subheading");
 
         content.getChildren().addAll(heading, message);
     }
@@ -186,7 +191,7 @@ public class CompanyDashboard {
         content.getChildren().clear();
 
         Label heading = new Label("Post New Internship");
-        heading.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;");
+        heading.getStyleClass().add("heading");
 
         TextField roleField = new TextField();
         roleField.setPromptText("Internship Role");
@@ -203,9 +208,10 @@ public class CompanyDashboard {
 
         DatePicker deadlinePicker = new DatePicker();
         deadlinePicker.setPromptText("Application Deadline");
+        deadlinePicker.setMaxWidth(Double.MAX_VALUE);
 
         Label skillsHeading = new Label("Select Required Skills");
-        skillsHeading.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        skillsHeading.getStyleClass().add("section-heading");
 
         VBox skillsBox = new VBox(10);
 
@@ -255,11 +261,7 @@ public class CompanyDashboard {
         }
 
         Button submitBtn = new Button("Post Internship");
-        submitBtn.setStyle(
-                "-fx-background-color: #4F46E5;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-padding: 12px;"
-        );
+        submitBtn.getStyleClass().add("primary-button");
 
         submitBtn.setOnAction(e -> {
 
@@ -304,8 +306,7 @@ public class CompanyDashboard {
         });
 
         VBox form = new VBox(
-                15,
-                heading,
+                14,
                 roleField,
                 descriptionField,
                 cgpaField,
@@ -316,12 +317,15 @@ public class CompanyDashboard {
                 submitBtn
         );
 
+        form.setPadding(new Insets(24));
         form.setMaxWidth(600);
+        form.getStyleClass().add("card");
 
         ScrollPane scrollPane = new ScrollPane(form);
         scrollPane.setFitToWidth(true);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
-        content.getChildren().add(scrollPane);
+        content.getChildren().addAll(heading, scrollPane);
     }
 
     // MY INTERNSHIPS
@@ -330,9 +334,9 @@ public class CompanyDashboard {
         content.getChildren().clear();
 
         Label heading = new Label("My Internships");
-        heading.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;");
+        heading.getStyleClass().add("heading");
 
-        VBox internshipsBox = new VBox(15);
+        VBox internshipsBox = new VBox(14);
 
         try {
 
@@ -348,43 +352,43 @@ public class CompanyDashboard {
             for (Internship internship : internships) {
 
                 Label role = new Label(internship.getRole());
-                role.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+                role.getStyleClass().add("card-title");
 
                 Label description = new Label(
                         "Description: " + (internship.getDescription() == null
                                 ? "No description" : internship.getDescription())
                 );
+                description.getStyleClass().add("body-text");
+                description.setWrapText(true);
 
                 Label positions = new Label(
                         "Positions: " + internship.getNumberOfPositions()
                 );
+                positions.getStyleClass().add("body-text");
 
                 Label cgpa = new Label(
                         "Minimum CGPA: " + (internship.getMinCgpa() == null
                                 ? "Not specified" : internship.getMinCgpa())
                 );
+                cgpa.getStyleClass().add("body-text");
 
                 Label deadline = new Label(
                         "Deadline: " + (internship.getApplicationDeadline() == null
                                 ? "Not specified" : internship.getApplicationDeadline())
                 );
+                deadline.getStyleClass().add("muted-text");
 
                 Label status = new Label(
                         "Status: " + internship.getStatus()
                 );
-                status.setStyle("-fx-font-weight: bold; -fx-text-fill: #4F46E5;");
+                status.getStyleClass().add("status-badge");
 
                 VBox card = new VBox(
-                        10, role, description, positions, cgpa, deadline, status
+                        8, role, description, positions, cgpa, deadline, status
                 );
 
                 card.setPadding(new Insets(20));
-                card.setStyle(
-                        "-fx-background-color: white;" +
-                                "-fx-background-radius: 10;" +
-                                "-fx-border-color: #E2E8F0;" +
-                                "-fx-border-radius: 10;"
-                );
+                card.getStyleClass().add("card");
 
                 internshipsBox.getChildren().add(card);
             }
@@ -395,6 +399,7 @@ public class CompanyDashboard {
 
         ScrollPane scrollPane = new ScrollPane(internshipsBox);
         scrollPane.setFitToWidth(true);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
         content.getChildren().addAll(heading, scrollPane);
     }
@@ -405,9 +410,9 @@ public class CompanyDashboard {
         content.getChildren().clear();
 
         Label heading = new Label("Student Applications");
-        heading.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;");
+        heading.getStyleClass().add("heading");
 
-        VBox applicationsBox = new VBox(15);
+        VBox applicationsBox = new VBox(14);
 
         try {
 
@@ -423,11 +428,22 @@ public class CompanyDashboard {
             for (Application application : applications) {
 
                 Label name = new Label("Student: " + application.getStudentName());
+                name.getStyleClass().add("card-title");
+
                 Label email = new Label("Email: " + (application.getStudentEmail() == null ? "N/A" : application.getStudentEmail()));
+                email.getStyleClass().add("body-text");
+
                 Label branch = new Label("Branch: " + application.getBranch());
+                branch.getStyleClass().add("body-text");
+
                 Label cgpa = new Label("CGPA: " + (application.getCgpa() == null ? "N/A" : application.getCgpa()));
+                cgpa.getStyleClass().add("body-text");
+
                 Label role = new Label("Internship: " + application.getRole());
+                role.getStyleClass().add("body-text");
+
                 Label status = new Label("Current Status: " + application.getStatus());
+                status.getStyleClass().add("status-badge");
 
                 ComboBox<ApplicationStatus> statusBox = new ComboBox<>();
 
@@ -441,6 +457,7 @@ public class CompanyDashboard {
                 statusBox.setPromptText("Select new status");
 
                 Button updateBtn = new Button("Update Status");
+                updateBtn.getStyleClass().add("primary-button");
 
                 int applicationId = application.getApplicationId();
 
@@ -465,22 +482,17 @@ public class CompanyDashboard {
                     }
                 });
 
-                name.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+                HBox actionRow = new HBox(10, statusBox, updateBtn);
+                actionRow.setAlignment(Pos.CENTER_LEFT);
 
                 VBox card = new VBox(
-                        10,
+                        8,
                         name, email, branch, cgpa, role,
-                        status, statusBox, updateBtn
+                        status, actionRow
                 );
 
                 card.setPadding(new Insets(20));
-
-                card.setStyle(
-                        "-fx-background-color: white;" +
-                                "-fx-background-radius: 10;" +
-                                "-fx-border-color: #E2E8F0;" +
-                                "-fx-border-radius: 10;"
-                );
+                card.getStyleClass().add("card");
 
                 applicationsBox.getChildren().add(card);
             }
@@ -491,6 +503,7 @@ public class CompanyDashboard {
 
         ScrollPane scrollPane = new ScrollPane(applicationsBox);
         scrollPane.setFitToWidth(true);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
         content.getChildren().addAll(heading, scrollPane);
     }
@@ -501,9 +514,9 @@ public class CompanyDashboard {
         content.getChildren().clear();
 
         Label heading = new Label("Shortlisted Students");
-        heading.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;");
+        heading.getStyleClass().add("heading");
 
-        VBox studentsBox = new VBox(15);
+        VBox studentsBox = new VBox(14);
 
         try {
 
@@ -519,26 +532,29 @@ public class CompanyDashboard {
             for (Application student : students) {
 
                 Label name = new Label("Student: " + student.getStudentName());
-                Label email = new Label("Email: " + (student.getStudentEmail() == null ? "N/A" : student.getStudentEmail()));
-                Label branch = new Label("Branch: " + student.getBranch());
-                Label cgpa = new Label("CGPA: " + (student.getCgpa() == null ? "N/A" : student.getCgpa()));
-                Label role = new Label("Internship: " + student.getRole());
-                Label status = new Label("Status: " + student.getStatus());
+                name.getStyleClass().add("card-title");
 
-                name.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
-                status.setStyle("-fx-font-weight: bold; -fx-text-fill: #16A34A;");
+                Label email = new Label("Email: " + (student.getStudentEmail() == null ? "N/A" : student.getStudentEmail()));
+                email.getStyleClass().add("body-text");
+
+                Label branch = new Label("Branch: " + student.getBranch());
+                branch.getStyleClass().add("body-text");
+
+                Label cgpa = new Label("CGPA: " + (student.getCgpa() == null ? "N/A" : student.getCgpa()));
+                cgpa.getStyleClass().add("body-text");
+
+                Label role = new Label("Internship: " + student.getRole());
+                role.getStyleClass().add("body-text");
+
+                Label status = new Label("Status: " + student.getStatus());
+                status.getStyleClass().add("status-badge");
 
                 VBox card = new VBox(
-                        10, name, email, branch, cgpa, role, status
+                        8, name, email, branch, cgpa, role, status
                 );
 
                 card.setPadding(new Insets(20));
-                card.setStyle(
-                        "-fx-background-color: white;" +
-                                "-fx-background-radius: 10;" +
-                                "-fx-border-color: #E2E8F0;" +
-                                "-fx-border-radius: 10;"
-                );
+                card.getStyleClass().add("card");
 
                 studentsBox.getChildren().add(card);
             }
@@ -549,6 +565,7 @@ public class CompanyDashboard {
 
         ScrollPane scrollPane = new ScrollPane(studentsBox);
         scrollPane.setFitToWidth(true);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
         content.getChildren().addAll(heading, scrollPane);
     }
@@ -568,7 +585,7 @@ public class CompanyDashboard {
         content.getChildren().clear();
 
         Label heading = new Label("Company Profile");
-        heading.setStyle("-fx-font-size: 25px; -fx-font-weight: bold;");
+        heading.getStyleClass().add("heading");
 
         TextField nameField = new TextField();
         nameField.setPromptText("Company Name");
@@ -581,6 +598,7 @@ public class CompanyDashboard {
         descriptionArea.setPrefRowCount(5);
 
         Button updateBtn = new Button("Update Profile");
+        updateBtn.getStyleClass().add("primary-button");
 
         try {
 
@@ -626,16 +644,28 @@ public class CompanyDashboard {
             }
         });
 
-        content.getChildren().addAll(
-                heading,
-                new Label("Company Name"),
+        Label nameLabel = new Label("Company Name");
+        nameLabel.getStyleClass().add("field-label");
+        Label industryLabel = new Label("Industry");
+        industryLabel.getStyleClass().add("field-label");
+        Label descLabel = new Label("Description");
+        descLabel.getStyleClass().add("field-label");
+
+        VBox profileCard = new VBox(
+                12,
+                nameLabel,
                 nameField,
-                new Label("Industry"),
+                industryLabel,
                 industryField,
-                new Label("Description"),
+                descLabel,
                 descriptionArea,
                 updateBtn
         );
+        profileCard.setPadding(new Insets(24));
+        profileCard.setMaxWidth(580);
+        profileCard.getStyleClass().add("card");
+
+        content.getChildren().addAll(heading, profileCard);
     }
 
     // OFFERS
@@ -644,11 +674,12 @@ public class CompanyDashboard {
         content.getChildren().clear();
 
         Label heading = new Label("Manage Offers");
-        heading.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
+        heading.getStyleClass().add("heading");
 
         Label description = new Label(
                 "Create offers for selected students and track their responses."
         );
+        description.getStyleClass().add("subheading");
 
         ComboBox<Application> applicationDropdown = new ComboBox<>();
         applicationDropdown.setPromptText("Select a selected student");
@@ -671,14 +702,24 @@ public class CompanyDashboard {
         joiningDatePicker.setPromptText("Select joining date");
 
         Button createButton = new Button("Create Offer");
+        createButton.getStyleClass().add("primary-button");
+
         Label messageLabel = new Label();
+        messageLabel.getStyleClass().add("feedback-message");
+
+        Label studentLabel = new Label("Select Student:");
+        studentLabel.getStyleClass().add("field-label");
+        Label joiningLabel = new Label("Joining Date:");
+        joiningLabel.getStyleClass().add("field-label");
 
         VBox form = new VBox(12);
-        form.setPadding(new Insets(15));
+        form.setPadding(new Insets(20));
+        form.setMaxWidth(580);
+        form.getStyleClass().add("card");
         form.getChildren().addAll(
-                new Label("Select Student:"),
+                studentLabel,
                 applicationDropdown,
-                new Label("Joining Date:"),
+                joiningLabel,
                 joiningDatePicker,
                 createButton,
                 messageLabel
@@ -725,7 +766,7 @@ public class CompanyDashboard {
         });
 
         // Display existing offers
-        VBox offerList = new VBox(12);
+        VBox offerList = new VBox(14);
 
         try {
 
@@ -734,18 +775,30 @@ public class CompanyDashboard {
             for (Offer offer : offers) {
 
                 VBox card = new VBox(8);
-                card.setPadding(new Insets(15));
-                card.setStyle(
-                        "-fx-background-color: white;" +
-                                "-fx-background-radius: 10;"
-                );
+                card.setPadding(new Insets(20));
+                card.getStyleClass().add("card");
+
+                Label offerStudent = new Label("Student: " + offer.getStudentName());
+                offerStudent.getStyleClass().add("card-title");
+
+                Label offerEmail = new Label("Email: " + (offer.getStudentEmail() == null ? "N/A" : offer.getStudentEmail()));
+                offerEmail.getStyleClass().add("body-text");
+
+                Label offerRole = new Label("Role: " + offer.getRole());
+                offerRole.getStyleClass().add("body-text");
+
+                Label offerJoining = new Label("Joining Date: " + (offer.getJoiningDate() == null ? "Not specified" : offer.getJoiningDate()));
+                offerJoining.getStyleClass().add("muted-text");
+
+                Label offerStatus = new Label("Offer Status: " + offer.getStatus());
+                offerStatus.getStyleClass().add("status-badge");
 
                 card.getChildren().addAll(
-                        new Label("Student: " + offer.getStudentName()),
-                        new Label("Email: " + (offer.getStudentEmail() == null ? "N/A" : offer.getStudentEmail())),
-                        new Label("Role: " + offer.getRole()),
-                        new Label("Joining Date: " + (offer.getJoiningDate() == null ? "Not specified" : offer.getJoiningDate())),
-                        new Label("Offer Status: " + offer.getStatus())
+                        offerStudent,
+                        offerEmail,
+                        offerRole,
+                        offerJoining,
+                        offerStatus
                 );
 
                 offerList.getChildren().add(card);

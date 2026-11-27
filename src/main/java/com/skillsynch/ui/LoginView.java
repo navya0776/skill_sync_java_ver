@@ -15,13 +15,13 @@ public class LoginView {
 
     public Parent getView(Runnable openRegister,Consumer<User> onLoginSuccess) {
 
-        VBox container = new VBox(22);
-        container.setAlignment(Pos.CENTER);
-        container.setPadding(new Insets(40));
-        container.setMaxWidth(420);
+        VBox container = new VBox(20);
+        container.setAlignment(Pos.CENTER_LEFT);
+        container.setPadding(new Insets(36));
+        container.setMaxWidth(440);
 
         Label logo = new Label("SkillSynch");
-        logo.setStyle("-fx-font-size: 30px; -fx-font-weight: bold; -fx-text-fill: #4F46E5;");
+        logo.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #2563EB;");
 
         Label heading = new Label("Welcome back");
         heading.getStyleClass().add("heading");
@@ -29,10 +29,11 @@ public class LoginView {
         Label subtitle = new Label("Sign in to continue to your account");
         subtitle.getStyleClass().add("subheading");
 
-        VBox titleBox = new VBox(8, heading, subtitle);
+        VBox titleBox = new VBox(6, heading, subtitle);
         titleBox.setAlignment(Pos.CENTER_LEFT);
 
         Label roleLabel = new Label("Sign in as");
+        roleLabel.getStyleClass().add("field-label");
         ComboBox<UserRole> role = new ComboBox<>();
         role.getItems().addAll(UserRole.STUDENT, UserRole.COMPANY, UserRole.ADMIN);
         role.setValue(UserRole.STUDENT);
@@ -53,17 +54,16 @@ public class LoginView {
             }
         });
         role.setMaxWidth(Double.MAX_VALUE);
-        role.getStyleClass().add("input-field");
 
         Label emailLabel = new Label("Email address");
+        emailLabel.getStyleClass().add("field-label");
         TextField email = new TextField();
         email.setPromptText("Enter your email");
-        email.getStyleClass().add("input-field");
 
         Label passwordLabel = new Label("Password");
+        passwordLabel.getStyleClass().add("field-label");
         PasswordField password = new PasswordField();
         password.setPromptText("Enter your password");
-        password.getStyleClass().add("input-field");
 
         Button loginButton = new Button("Sign In");
         loginButton.getStyleClass().add("primary-button");
@@ -127,7 +127,7 @@ public class LoginView {
                 registerLink);
         footer.setAlignment(Pos.CENTER);
 
-        VBox form = new VBox(9,
+        VBox form = new VBox(10,
                 roleLabel, role,
                 emailLabel, email,
                 passwordLabel, password,
@@ -140,17 +140,12 @@ public class LoginView {
 
         VBox card = new VBox(container);
         card.setAlignment(Pos.CENTER);
-        card.setMaxWidth(500);
-        card.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-background-radius: 16px;" +
-                        "-fx-border-color: #E2E8F0;" +
-                        "-fx-border-radius: 16px;"
-        );
+        card.setMaxWidth(460);
+        card.getStyleClass().add("card");
 
         StackPane root = new StackPane(card);
         root.setPadding(new Insets(30));
-        root.setStyle("-fx-background-color: #F8FAFC;");
+        root.getStyleClass().add("content-area");
 
         return root;
     }

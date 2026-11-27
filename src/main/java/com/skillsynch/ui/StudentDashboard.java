@@ -24,11 +24,12 @@ import java.util.*;
 public class StudentDashboard {
 
     private final BorderPane root = new BorderPane();
-    private final VBox content = new VBox(20);
+    private final VBox content = new VBox(18);
 
     private final StudentService service = new StudentService();
 
     private int studentId;
+    private Button activeNavButton;
 
     // Receives the logged-in student's ID from Main.java
     public Parent getView(Runnable logout, int studentId) {
@@ -36,21 +37,19 @@ public class StudentDashboard {
         this.studentId = studentId;
 
         // SIDEBAR
-        VBox sidebar = new VBox(15);
-        sidebar.setPadding(new Insets(25));
+        VBox sidebar = new VBox(6);
+        sidebar.setPadding(new Insets(22, 16, 22, 16));
         sidebar.setPrefWidth(230);
-
-        sidebar.setStyle(
-                "-fx-background-color: #1E293B;"
-        );
+        sidebar.getStyleClass().add("sidebar");
 
         Label logo = new Label("SkillSynch");
+        logo.getStyleClass().add("brand-title");
 
-        logo.setStyle(
-                "-fx-text-fill: white;" +
-                        "-fx-font-size: 25px;" +
-                        "-fx-font-weight: bold;"
-        );
+        Label portalLabel = new Label("Student Portal");
+        portalLabel.getStyleClass().add("brand-subtitle");
+
+        VBox brandBox = new VBox(2, logo, portalLabel);
+        brandBox.setPadding(new Insets(0, 6, 8, 6));
 
         Button dashboardBtn = createButton("Dashboard");
         Button profileBtn = createButton("My Profile");
@@ -59,10 +58,17 @@ public class StudentDashboard {
         Button eligibilityBtn = createButton("Eligibility");
         Button applicationsBtn = createButton("My Applications");
         Button offersBtn = createButton("My Offers");
-        Button logoutBtn = createButton("Logout");
+
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        Button logoutBtn = new Button("Logout");
+        logoutBtn.setMaxWidth(Double.MAX_VALUE);
+        logoutBtn.setAlignment(Pos.CENTER_LEFT);
+        logoutBtn.getStyleClass().add("nav-logout");
 
         sidebar.getChildren().addAll(
-                logo,
+                brandBox,
                 new Separator(),
                 dashboardBtn,
                 profileBtn,
@@ -71,32 +77,45 @@ public class StudentDashboard {
                 eligibilityBtn,
                 applicationsBtn,
                 offersBtn,
+                spacer,
                 logoutBtn
         );
 
         // MAIN CONTENT
-        content.setPadding(new Insets(30));
-
-        content.setStyle(
-                "-fx-background-color: #F8FAFC;"
-        );
+        content.setPadding(new Insets(28));
+        content.getStyleClass().add("content-area");
 
         root.setLeft(sidebar);
         root.setCenter(content);
 
         // BUTTON ACTIONS
-        dashboardBtn.setOnAction(e -> showDashboard());
-        profileBtn.setOnAction(e -> showProfile());
-        skillsBtn.setOnAction(e -> showSkills());
-        offersBtn.setOnAction(e -> showMyOffers());
-        internshipsBtn.setOnAction(e -> showInternships());
-        eligibilityBtn.setOnAction(e -> showEligibility());
-        applicationsBtn.setOnAction(e -> showMyApplications());
+        dashboardBtn.setOnAction(e -> { setActiveNav(dashboardBtn); showDashboard(); });
+        profileBtn.setOnAction(e -> { setActiveNav(profileBtn); showProfile(); });
+        skillsBtn.setOnAction(e -> { setActiveNav(skillsBtn); showSkills(); });
+        offersBtn.setOnAction(e -> { setActiveNav(offersBtn); showMyOffers(); });
+        internshipsBtn.setOnAction(e -> { setActiveNav(internshipsBtn); showInternships(); });
+        eligibilityBtn.setOnAction(e -> { setActiveNav(eligibilityBtn); showEligibility(); });
+        applicationsBtn.setOnAction(e -> { setActiveNav(applicationsBtn); showMyApplications(); });
         logoutBtn.setOnAction(e -> logout.run());
 
+        setActiveNav(dashboardBtn);
         showDashboard();
 
         return root;
+    }
+
+    private void setActiveNav(Button button) {
+        if (activeNavButton != null) {
+            activeNavButton.getStyleClass().remove("nav-button-active");
+            if (!activeNavButton.getStyleClass().contains("nav-button")) {
+                activeNavButton.getStyleClass().add("nav-button");
+            }
+        }
+        activeNavButton = button;
+        activeNavButton.getStyleClass().remove("nav-button");
+        if (!activeNavButton.getStyleClass().contains("nav-button-active")) {
+            activeNavButton.getStyleClass().add("nav-button-active");
+        }
     }
 
     // SIDEBAR BUTTON DESIGN
@@ -106,37 +125,27 @@ public class StudentDashboard {
 
         button.setMaxWidth(Double.MAX_VALUE);
         button.setAlignment(Pos.CENTER_LEFT);
-
-        button.setStyle(
-                "-fx-background-color: #334155;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-font-size: 14px;" +
-                        "-fx-padding: 12px;" +
-                        "-fx-background-radius: 8px;" +
-                        "-fx-cursor: hand;"
-        );
+        button.getStyleClass().add("nav-button");
 
         return button;
     }
 
     // MAIN DASHBOARD
-
     private void showDashboard() {
 
         content.getChildren().clear();
 
         Label heading = new Label("Student Dashboard");
-        heading.setStyle(
-                "-fx-font-size: 28px;" +
-                        "-fx-font-weight: bold;"
-        );
+        heading.getStyleClass().add("hero-title");
 
         Label welcome = new Label("Welcome to SkillSynch!");
-<<<<<<< HEAD
+        welcome.getStyleClass().add("hero-subtitle");
 
-        welcome.setStyle("-fx-font-size: 18px;");
+        VBox banner = new VBox(6, heading, welcome);
+        banner.setPadding(new Insets(24));
+        banner.getStyleClass().add("hero-banner");
 
-        HBox cards = new HBox(20);
+        HBox cards = new HBox(16);
 
         VBox card1 = createCard("Available Internships", "0");
         VBox card2 = createCard("Applications", "0");
@@ -144,128 +153,23 @@ public class StudentDashboard {
 
         cards.getChildren().addAll(card1, card2, card3);
 
-        content.getChildren().addAll(heading, welcome, cards);
-=======
-        welcome.setStyle("-fx-font-size: 18px;");
-
-        String internshipCount = "0";
-        String applicationCount = "0";
-        String eligibleCount = "0";
-
-        try (Connection connection = DatabaseConfig.getConnection()) {
-
-            InternshipDAO internshipDAO = new InternshipDAO();
-            ApplicationDAO applicationDAO = new ApplicationDAO();
-            EligibilityDAO eligibilityDAO = new EligibilityDAO();
-
-            // 1. Count approved and published internships
-            List<Map<String, Object>> internships =
-                    internshipDAO.getAllInternships(connection);
-
-            int available = 0;
-
-            for (Map<String, Object> internship : internships) {
-
-                String status = String.valueOf(internship.get("status"));
-
-                if (status.equals("Approved") ||
-                        status.equals("Published")) {
-
-                    available++;
-
-                    // Calculate and save eligibility
-                    int internId = Integer.parseInt(
-                            String.valueOf(internship.get("intern_id"))
-                    );
-
-                    eligibilityDAO.evaluateAndSave(
-                            connection, studentId, internId
-                    );
-                }
-            }
-
-            internshipCount = String.valueOf(available);
-
-            // 2. Count student's applications
-            List<Map<String, Object>> applications =
-                    applicationDAO.getStudentApplications(
-                            connection, studentId
-                    );
-
-            applicationCount = String.valueOf(applications.size());
-
-            // 3. Count eligible internships
-            List<Map<String, Object>> eligibilityResults =
-                    eligibilityDAO.getStudentEligibility(
-                            connection, studentId
-                    );
-
-            int eligible = 0;
-
-            for (Map<String, Object> result : eligibilityResults) {
-
-                if ("Eligible".equals(
-                        String.valueOf(result.get("eligibility_status")))) {
-                    eligible++;
-                }
-            }
-
-            eligibleCount = String.valueOf(eligible);
-
-        } catch (Exception ex) {
-            ex.printStackTrace();
-
-            new Alert(
-                    Alert.AlertType.ERROR,
-                    "Unable to load dashboard statistics: " + ex.getMessage()
-            ).showAndWait();
-        }
-
-        HBox cards = new HBox(20);
-
-        cards.getChildren().addAll(
-                createCard("Available Internships", internshipCount),
-                createCard("Applications", applicationCount),
-                createCard("Eligible Internships", eligibleCount)
-        );
-
-        content.getChildren().addAll(
-                heading,
-                welcome,
-                cards
-        );
->>>>>>> 0f3fa947df1da6b62e4ca02d8012b336292e5988
+        content.getChildren().addAll(banner, cards);
     }
 
     // DASHBOARD CARDS
     private VBox createCard(String title, String value) {
 
         Label titleLabel = new Label(title);
-
-        titleLabel.setStyle(
-                "-fx-font-size: 15px;" +
-                        "-fx-text-fill: #64748B;"
-        );
+        titleLabel.getStyleClass().add("stat-title");
 
         Label valueLabel = new Label(value);
+        valueLabel.getStyleClass().add("stat-value");
 
-        valueLabel.setStyle(
-                "-fx-font-size: 30px;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-text-fill: #4F46E5;"
-        );
+        VBox card = new VBox(10, titleLabel, valueLabel);
 
-        VBox card = new VBox(15, titleLabel, valueLabel);
-
-        card.setPadding(new Insets(25));
+        card.setPadding(new Insets(22));
         card.setPrefWidth(220);
-
-        card.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-background-radius: 12px;" +
-                        "-fx-border-color: #E2E8F0;" +
-                        "-fx-border-radius: 12px;"
-        );
+        card.getStyleClass().add("stat-card");
 
         return card;
     }
@@ -275,8 +179,7 @@ public class StudentDashboard {
 
         content.getChildren().clear();
 
-        Label heading = new Label("My Profile");
-        heading.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
+        Label heading = createHeading("My Profile");
 
         try {
 
@@ -303,10 +206,14 @@ public class StudentDashboard {
 
             final File[] selectedResume = {null};
             Label messageLabel = new Label();
+            messageLabel.getStyleClass().add("feedback-message");
 
             Button chooseResumeButton = new Button("Choose PDF");
+            chooseResumeButton.getStyleClass().add("secondary-button");
             Button viewResumeButton = new Button("View Resume");
+            viewResumeButton.getStyleClass().add("secondary-button");
             Button downloadResumeButton = new Button("Download Resume");
+            downloadResumeButton.getStyleClass().add("secondary-button");
 
             viewResumeButton.setOnAction(event -> {
 
@@ -382,7 +289,10 @@ public class StudentDashboard {
             cgpaField.setPromptText("Enter your CGPA");
             resumeField.setPromptText("Enter your resume URL");
 
-            VBox form = new VBox(12);
+            HBox resumeActions = new HBox(10, chooseResumeButton, viewResumeButton, downloadResumeButton);
+            resumeActions.setAlignment(Pos.CENTER_LEFT);
+
+            VBox form = new VBox(10);
 
             form.getChildren().addAll(
                     createProfileLabel("Name"),
@@ -397,17 +307,11 @@ public class StudentDashboard {
                     cgpaField,
                     createProfileLabel("Resume"),
                     resumeField,
-                    chooseResumeButton,
-                    viewResumeButton,
-                    downloadResumeButton
+                    resumeActions
             );
 
             Button saveButton = new Button("Save Changes");
-            saveButton.setStyle(
-                    "-fx-background-color: #2563eb;" +
-                            "-fx-text-fill: white;" +
-                            "-fx-font-weight: bold;"
-            );
+            saveButton.getStyleClass().add("primary-button");
 
             saveButton.setOnAction(event -> {
 
@@ -425,7 +329,6 @@ public class StudentDashboard {
                     );
 
                     messageLabel.setText("Profile updated successfully!");
-                    messageLabel.setStyle("-fx-text-fill: green;");
 
                     showProfile();
 
@@ -441,19 +344,18 @@ public class StudentDashboard {
                 }
             });
 
-            VBox profileCard = new VBox(15);
-            profileCard.setPadding(new Insets(25));
-            profileCard.setMaxWidth(550);
-            profileCard.setStyle(
-                    "-fx-background-color: white;" +
-                            "-fx-background-radius: 12;" +
-                            "-fx-border-color: #e5e7eb;" +
-                            "-fx-border-radius: 12;"
-            );
+            VBox profileCard = new VBox(16);
+            profileCard.setPadding(new Insets(24));
+            profileCard.setMaxWidth(580);
+            profileCard.getStyleClass().add("card");
 
             profileCard.getChildren().addAll(form, saveButton, messageLabel);
 
-            content.getChildren().addAll(heading, profileCard);
+            ScrollPane scrollPane = new ScrollPane(profileCard);
+            scrollPane.setFitToWidth(true);
+            VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+            content.getChildren().addAll(heading, scrollPane);
 
         } catch (Exception e) {
 
@@ -489,30 +391,22 @@ public class StudentDashboard {
 
         content.getChildren().clear();
 
-        Label heading = new Label("My Skills");
-        heading.setStyle(
-                "-fx-font-size: 28px;" +
-                        "-fx-font-weight: bold;"
-        );
+        Label heading = createHeading("My Skills");
 
         Label description = new Label(
                 "Manage your technical skills and proficiency levels."
         );
-
-        description.setStyle(
-                "-fx-font-size: 15px;" +
-                        "-fx-text-fill: #64748B;"
-        );
+        description.getStyleClass().add("subheading");
 
         // AVAILABLE SKILLS
-        Label availableLabel = new Label("Select a Skill");
+        Label availableLabel = createProfileLabel("Select a Skill");
 
         ComboBox<Skill> availableSkills = new ComboBox<>();
         availableSkills.setPromptText("Choose a skill");
-        availableSkills.setPrefWidth(250);
+        availableSkills.setPrefWidth(260);
 
         // PROFICIENCY LEVEL
-        Label proficiencyLabel = new Label("Proficiency Level");
+        Label proficiencyLabel = createProfileLabel("Proficiency Level");
 
         ComboBox<Integer> proficiencyBox = new ComboBox<>(
                 FXCollections.observableArrayList(1, 2, 3, 4, 5)
@@ -523,6 +417,7 @@ public class StudentDashboard {
 
         // STUDENT'S SAVED SKILLS
         Label savedLabel = new Label("My Saved Skills");
+        savedLabel.getStyleClass().add("section-heading");
 
         ListView<StudentSkill> savedSkillsList = new ListView<>();
         savedSkillsList.setPrefHeight(220);
@@ -578,7 +473,7 @@ public class StudentDashboard {
             ex.printStackTrace();
 
             Label error = new Label("Unable to load skills from database.");
-            error.setStyle("-fx-text-fill: red;");
+            error.getStyleClass().add("feedback-message");
 
             content.getChildren().addAll(heading, description, error);
 
@@ -587,13 +482,7 @@ public class StudentDashboard {
 
         // ADD SKILL BUTTON
         Button addButton = new Button("Add Skill");
-
-        addButton.setStyle(
-                "-fx-background-color: #4F46E5;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-padding: 10px 20px;" +
-                        "-fx-background-radius: 8px;"
-        );
+        addButton.getStyleClass().add("primary-button");
 
         addButton.setOnAction(e -> {
 
@@ -635,13 +524,7 @@ public class StudentDashboard {
 
         // REMOVE SKILL BUTTON
         Button removeButton = new Button("Remove Selected Skill");
-
-        removeButton.setStyle(
-                "-fx-background-color: #DC2626;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-padding: 10px 20px;" +
-                        "-fx-background-radius: 8px;"
-        );
+        removeButton.getStyleClass().add("secondary-button");
 
         removeButton.setOnAction(e -> {
 
@@ -681,42 +564,31 @@ public class StudentDashboard {
         });
 
         // ADD SKILL SECTION
-        VBox addSection = new VBox(12);
-
+        VBox addSection = new VBox(14);
         addSection.setPadding(new Insets(20));
+        addSection.getStyleClass().add("card");
 
-        addSection.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-background-radius: 12px;" +
-                        "-fx-border-color: #E2E8F0;" +
-                        "-fx-border-radius: 12px;"
-        );
-
-        HBox selectionRow = new HBox(15);
+        HBox selectionRow = new HBox(16);
         selectionRow.setAlignment(Pos.CENTER_LEFT);
 
-        VBox skillBox = new VBox(8, availableLabel, availableSkills);
-        VBox levelBox = new VBox(8, proficiencyLabel, proficiencyBox);
+        VBox skillBox = new VBox(6, availableLabel, availableSkills);
+        VBox levelBox = new VBox(6, proficiencyLabel, proficiencyBox);
 
         selectionRow.getChildren().addAll(skillBox, levelBox);
 
+        Label addSectionTitle = new Label("Add a New Skill");
+        addSectionTitle.getStyleClass().add("section-heading");
+
         addSection.getChildren().addAll(
-                new Label("Add a New Skill"),
+                addSectionTitle,
                 selectionRow,
                 addButton
         );
 
         // SAVED SKILLS SECTION
         VBox savedSection = new VBox(12);
-
         savedSection.setPadding(new Insets(20));
-
-        savedSection.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-background-radius: 12px;" +
-                        "-fx-border-color: #E2E8F0;" +
-                        "-fx-border-radius: 12px;"
-        );
+        savedSection.getStyleClass().add("card");
 
         savedSection.getChildren().addAll(
                 savedLabel,
@@ -724,12 +596,16 @@ public class StudentDashboard {
                 removeButton
         );
 
+        VBox skillsLayout = new VBox(16, addSection, savedSection);
+        ScrollPane scrollPane = new ScrollPane(skillsLayout);
+        scrollPane.setFitToWidth(true);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
         // DISPLAY EVERYTHING
         content.getChildren().addAll(
                 heading,
                 description,
-                addSection,
-                savedSection
+                scrollPane
         );
     }
 
@@ -738,30 +614,17 @@ public class StudentDashboard {
 
         content.getChildren().clear();
 
-        Label heading = new Label(title);
-
-        heading.setStyle(
-                "-fx-font-size: 28px;" +
-                        "-fx-font-weight: bold;"
-        );
+        Label heading = createHeading(title);
 
         Label message = new Label(description);
-
-        message.setStyle(
-                "-fx-font-size: 16px;" +
-                        "-fx-text-fill: #64748B;"
-        );
+        message.getStyleClass().add("subheading");
 
         content.getChildren().addAll(heading, message);
     }
 
     private Label createProfileLabel(String field) {
         Label label = new Label(field);
-        label.setStyle(
-                "-fx-font-size: 14px;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-text-fill: #374151;"
-        );
+        label.getStyleClass().add("field-label");
         return label;
     }
 
@@ -770,10 +633,9 @@ public class StudentDashboard {
 
         content.getChildren().clear();
 
-        Label heading = new Label("Available Internships");
-        heading.setStyle("-fx-font-size: 26px; -fx-font-weight: bold;");
+        Label heading = createHeading("Available Internships");
 
-        VBox internshipList = new VBox(15);
+        VBox internshipList = new VBox(14);
 
         try {
 
@@ -782,25 +644,29 @@ public class StudentDashboard {
 
             for (Internship internship : internships) {
 
-                Label details = new Label(
-                        "Company: " + internship.getCompanyName() +
-                                "\nRole: " + internship.getRole() +
-                                "\nDescription: " + (internship.getDescription() == null ? "No description" : internship.getDescription()) +
-                                "\nMinimum CGPA: " + (internship.getMinCgpa() == null ? "Not specified" : internship.getMinCgpa()) +
-                                "\nPositions: " + internship.getNumberOfPositions() +
-                                "\nDeadline: " + (internship.getApplicationDeadline() == null ? "Not specified" : internship.getApplicationDeadline())
-                );
+                Label roleLabel = new Label(internship.getRole());
+                roleLabel.getStyleClass().add("card-title");
 
-                details.setStyle(
-                        "-fx-padding: 15px;" +
-                                "-fx-font-size: 14px;" +
-                                "-fx-background-color: white;" +
-                                "-fx-border-color: #cccccc;"
+                Label companyLabel = new Label("Company: " + internship.getCompanyName());
+                companyLabel.getStyleClass().add("body-text");
+
+                Label descriptionLabel = new Label(
+                        "Description: " + (internship.getDescription() == null ? "No description" : internship.getDescription())
                 );
+                descriptionLabel.getStyleClass().add("body-text");
+                descriptionLabel.setWrapText(true);
+
+                Label metaLabel = new Label(
+                        "Minimum CGPA: " + (internship.getMinCgpa() == null ? "Not specified" : internship.getMinCgpa()) +
+                                "  |  Positions: " + internship.getNumberOfPositions() +
+                                "  |  Deadline: " + (internship.getApplicationDeadline() == null ? "Not specified" : internship.getApplicationDeadline())
+                );
+                metaLabel.getStyleClass().add("muted-text");
 
                 int internId = internship.getInternId();
 
                 Button applyButton = new Button("Apply Now");
+                applyButton.getStyleClass().add("primary-button");
 
                 try {
 
@@ -837,8 +703,9 @@ public class StudentDashboard {
                     }
                 });
 
-                VBox internshipCard = new VBox(10, details, applyButton);
-                internshipCard.setStyle("-fx-padding: 10px;");
+                VBox internshipCard = new VBox(8, roleLabel, companyLabel, descriptionLabel, metaLabel, applyButton);
+                internshipCard.setPadding(new Insets(20));
+                internshipCard.getStyleClass().add("card");
 
                 internshipList.getChildren().add(internshipCard);
             }
@@ -856,7 +723,11 @@ public class StudentDashboard {
                     .showAndWait();
         }
 
-        content.getChildren().addAll(heading, internshipList);
+        ScrollPane scrollPane = new ScrollPane(internshipList);
+        scrollPane.setFitToWidth(true);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        content.getChildren().addAll(heading, scrollPane);
     }
 
     // MY APPLICATIONS PAGE
@@ -864,10 +735,9 @@ public class StudentDashboard {
 
         content.getChildren().clear();
 
-        Label heading = new Label("My Applications");
-        heading.setStyle("-fx-font-size: 26px; -fx-font-weight: bold;");
+        Label heading = createHeading("My Applications");
 
-        VBox applicationList = new VBox(15);
+        VBox applicationList = new VBox(14);
 
         try {
 
@@ -876,21 +746,23 @@ public class StudentDashboard {
 
             for (Application application : applications) {
 
-                Label details = new Label(
-                        "Company: " + application.getCompanyName() +
-                                "\nRole: " + application.getRole() +
-                                "\nApplication Date: " + application.getApplicationDate() +
-                                "\nStatus: " + application.getStatus()
-                );
+                Label roleLabel = new Label(application.getRole());
+                roleLabel.getStyleClass().add("card-title");
 
-                details.setStyle(
-                        "-fx-padding: 15px;" +
-                                "-fx-font-size: 14px;" +
-                                "-fx-background-color: white;" +
-                                "-fx-border-color: #cccccc;"
-                );
+                Label companyLabel = new Label("Company: " + application.getCompanyName());
+                companyLabel.getStyleClass().add("body-text");
 
-                applicationList.getChildren().add(details);
+                Label dateLabel = new Label("Application Date: " + application.getApplicationDate());
+                dateLabel.getStyleClass().add("muted-text");
+
+                Label statusLabel = new Label("Status: " + application.getStatus());
+                statusLabel.getStyleClass().add("status-badge");
+
+                VBox card = new VBox(8, roleLabel, companyLabel, dateLabel, statusLabel);
+                card.setPadding(new Insets(20));
+                card.getStyleClass().add("card");
+
+                applicationList.getChildren().add(card);
             }
 
             if (applications.isEmpty()) {
@@ -908,7 +780,11 @@ public class StudentDashboard {
             ).showAndWait();
         }
 
-        content.getChildren().addAll(heading, applicationList);
+        ScrollPane scrollPane = new ScrollPane(applicationList);
+        scrollPane.setFitToWidth(true);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        content.getChildren().addAll(heading, scrollPane);
     }
 
     // ELIGIBILITY PAGE
@@ -916,10 +792,9 @@ public class StudentDashboard {
 
         content.getChildren().clear();
 
-        Label heading = new Label("My Internship Eligibility");
-        heading.setStyle("-fx-font-size: 26px; -fx-font-weight: bold;");
+        Label heading = createHeading("My Internship Eligibility");
 
-        VBox eligibilityList = new VBox(15);
+        VBox eligibilityList = new VBox(14);
 
         try {
 
@@ -928,21 +803,23 @@ public class StudentDashboard {
 
             for (Eligibility result : results) {
 
-                Label details = new Label(
-                        "Company: " + result.getCompanyName() +
-                                "\nRole: " + result.getRole() +
-                                "\nSkill Match: " + result.getMatchPercentage() + "%" +
-                                "\nEligibility: " + result.getEligibilityStatus()
-                );
+                Label roleLabel = new Label(result.getRole());
+                roleLabel.getStyleClass().add("card-title");
 
-                details.setStyle(
-                        "-fx-padding: 15px;" +
-                                "-fx-font-size: 14px;" +
-                                "-fx-background-color: white;" +
-                                "-fx-border-color: #cccccc;"
-                );
+                Label companyLabel = new Label("Company: " + result.getCompanyName());
+                companyLabel.getStyleClass().add("body-text");
 
-                eligibilityList.getChildren().add(details);
+                Label matchLabel = new Label("Skill Match: " + result.getMatchPercentage() + "%");
+                matchLabel.getStyleClass().add("body-text");
+
+                Label statusLabel = new Label("Eligibility: " + result.getEligibilityStatus());
+                statusLabel.getStyleClass().add("status-badge");
+
+                VBox card = new VBox(8, roleLabel, companyLabel, matchLabel, statusLabel);
+                card.setPadding(new Insets(20));
+                card.getStyleClass().add("card");
+
+                eligibilityList.getChildren().add(card);
             }
 
             if (results.isEmpty()) {
@@ -960,7 +837,11 @@ public class StudentDashboard {
             ).showAndWait();
         }
 
-        content.getChildren().addAll(heading, eligibilityList);
+        ScrollPane scrollPane = new ScrollPane(eligibilityList);
+        scrollPane.setFitToWidth(true);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        content.getChildren().addAll(heading, scrollPane);
     }
 
     // MY OFFERS PAGE
@@ -970,7 +851,7 @@ public class StudentDashboard {
 
         Label heading = createHeading("My Offers");
 
-        VBox offerList = new VBox(15);
+        VBox offerList = new VBox(14);
 
         try {
 
@@ -990,13 +871,23 @@ public class StudentDashboard {
 
                     OfferStatus status = offer.getStatus();
 
+                    Label roleLabel = new Label(offer.getRole());
+                    roleLabel.getStyleClass().add("card-title");
+
                     Label companyLabel = new Label("Company: " + offer.getCompanyName());
-                    Label roleLabel = new Label("Role: " + offer.getRole());
+                    companyLabel.getStyleClass().add("body-text");
+
                     Label joiningLabel = new Label("Joining Date: " + (offer.getJoiningDate() == null ? "Not specified" : offer.getJoiningDate()));
+                    joiningLabel.getStyleClass().add("muted-text");
+
                     Label statusLabel = new Label("Offer Status: " + status);
+                    statusLabel.getStyleClass().add("status-badge");
 
                     Button acceptButton = new Button("Accept Offer");
+                    acceptButton.getStyleClass().add("primary-button");
+
                     Button rejectButton = new Button("Reject Offer");
+                    rejectButton.getStyleClass().add("secondary-button");
 
                     if (status == OfferStatus.PENDING) {
 
@@ -1012,21 +903,16 @@ public class StudentDashboard {
                     HBox buttons = new HBox(10, acceptButton, rejectButton);
 
                     VBox card = new VBox(
-                            10,
-                            companyLabel,
+                            8,
                             roleLabel,
+                            companyLabel,
                             joiningLabel,
                             statusLabel,
                             buttons
                     );
 
-                    card.setPadding(new Insets(18));
-
-                    card.setStyle(
-                            "-fx-background-color: white;" +
-                                    "-fx-background-radius: 10px;" +
-                                    "-fx-border-color: #E2E8F0;"
-                    );
+                    card.setPadding(new Insets(20));
+                    card.getStyleClass().add("card");
 
                     offerList.getChildren().add(card);
                 }
@@ -1089,11 +975,7 @@ public class StudentDashboard {
 
     private Label createHeading(String text) {
         Label heading = new Label(text);
-        heading.setStyle(
-                "-fx-font-size: 24px;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-text-fill: #2c3e50;"
-        );
+        heading.getStyleClass().add("heading");
         return heading;
     }
 }

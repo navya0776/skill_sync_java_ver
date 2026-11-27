@@ -130,6 +130,7 @@ public class CompanyDashboard {
     }
 
     // DASHBOARD
+
     private void showDashboard() {
 
         content.getChildren().clear();
@@ -146,14 +147,46 @@ public class CompanyDashboard {
 
         HBox cards = new HBox(16);
 
-        cards.getChildren().addAll(
-                createCard("Posted Internships", "0"),
-                createCard("Applications", "0"),
-                createCard("Shortlisted Students", "0")
-        );
+        try {
+
+            // Total internships posted by this company
+            int internshipCount =
+                    service.getCompanyInternships(companyId).size();
+
+            // Total applications received by this company
+            int applicationCount =
+                    service.getCompanyApplications(companyId).size();
+
+            // Students who are shortlisted, in interview, or selected
+            int shortlistedCount =
+                    service.getShortlistedStudents(companyId).size();
+
+            cards.getChildren().addAll(
+                    createCard("Posted Internships",
+                            String.valueOf(internshipCount)),
+
+                    createCard("Applications",
+                            String.valueOf(applicationCount)),
+
+                    createCard("Shortlisted Students",
+                            String.valueOf(shortlistedCount))
+            );
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            Label error = new Label(
+                    "Unable to load dashboard statistics: " + e.getMessage()
+            );
+
+            content.getChildren().addAll(banner, error);
+            return;
+        }
 
         content.getChildren().addAll(banner, cards);
     }
+
 
     private VBox createCard(String title, String value) {
 
